@@ -1,0 +1,706 @@
+% Functors, monads, and whatnot
+
+In our lecture on testing, we visited with the humble functor.
+
+~~~~ {.haskell}
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+~~~~
+
+But how good is our intuition for what a functor is?
+
+
+# Functors over lists
+
+Please tell me what the following computes:
+
+~~~~ {.haskell}
+fmap (+1) [1,2,3]
+~~~~
+
+
+# Functors over lists
+
+Please tell me what the following computes:
+
+~~~~ {.haskell}
+import Data.Char
+fmap toUpper "qwertyuiop"
+~~~~
+
+
+# Functors over Maybe
+
+Let's avoid name clash with the standard `Functor` class:
+
+~~~~ {.haskell}
+class MyFunctor f where
+    myfmap :: (a -> b) -> f a -> f b
+~~~~
+
+Please write a `MyFunctor` instance for `Maybe`.
+
+You have 2 minutes.
+
+
+# Functors over Maybe
+
+
+Let's avoid name clash with the standard `Functor` class:
+
+~~~~ {.haskell}
+class MyFunctor f where
+    myfmap :: (a -> b) -> f a -> f b
+~~~~
+
+Here is a `MyFunctor` instance for `Maybe`.
+
+~~~~ {.haskell}
+instance MyFunctor Maybe where
+    myfmap _ Nothing  = Nothing
+    myfmap f (Just a) = Just (f a)
+~~~~
+
+
+# Functors over Identity
+
+Please dictate to me a `MyFunctor` instance for `Identity`.
+
+~~~~ {.haskell}
+newtype Identity a = Identity a
+~~~~
+
+(You can find this type in `Data.Functor.Identity`.)
+
+
+# One view of functors
+
+Suppose we think of a functor as a container.
+
+What do we know about what a functor does to the things inside the
+container?
+
+How about the structure of the container itself?
+
+
+# Constructing a tuple
+
+You may not have come across the "tupling" operator yet:
+
+~~~~ {.haskell}
+(,) :: a -> b -> (a, b)
+~~~~
+
+Given two arguments, it returns a pair consisting of those arguments.
+
+
+# Partial application of a pair
+
+Since `(,)` is a operator, we can surround it in parentheses to use it
+as a function.
+
+~~~~ {.haskell}
+ghci> :type (,) 'X' True
+(,) 'X' True :: (Char, Bool)
+~~~~
+
+In typical Haskell fashion, we can partially apply the function to
+yield another function:
+
+~~~~ {.haskell}
+ghci> :type (,) 'X'
+(,) 'X' :: b -> (Char, b)
+~~~~
+
+
+# Type signatures and tuples
+
+OK, we can use `(,)` in prefix position as a function.
+
+We can also write `(,)` as a *type constructor*.
+
+~~~~ {.haskell}
+foo :: b -> (,) Char b
+foo b = (,) 'X' b
+~~~~
+
+This means *exactly the same thing* as the following signature:
+
+~~~~ {.haskell}
+foo :: b -> (Char, b)
+~~~~
+
+
+# Functors over tuples
+
+What should a `MyFunctor` instance for pairs look like?
+
+~~~~ {.haskell}
+instance MyFunctor ((,) a) where
+    {- ... -}
+~~~~
+
+Remember, for a type to be an instance of `MyFunctor`, we need one
+free type parameter:
+
+~~~~ {.haskell}
+class MyFunctor f where
+    myfmap :: (a -> b) -> f a -> f b
+~~~~
+
+By convention, we choose the second element of the pair to be free in
+our `MyFunctor` instance.
+
+What should `myfmap` look like?
+
+
+# Getting weirder
+
+How useful is our functors-as-containers metaphor?
+
+Recall the enigmatic `Identity` type.
+
+~~~~ {.haskell}
+newtype Identity a = Identity a
+~~~~
+
+Since this is a `newtype`, it has no runtime representation.
+
+So strictly speaking, it's not really a container:
+
+* Apart from type system machinery, there's no "outside" for something
+  to be "inside" of.
+
+
+# Why talk about prefix operators?
+
+I had a purpose in talking about `(,)` as a prefix operator.
+
+We can do the same with the `(->)` operator for describing functions.
+
+~~~~ {.haskell}
+foo :: (->) Char Bool
+foo c = isUpper c
+~~~~
+
+Since we were able to write a `MyFunctor` instance for pairs:
+
+~~~~ {.haskell}
+instance MyFunctor ((,) a) where
+    myfmap f (a, b) = (a, f b)
+~~~~
+
+Can we do the same for functions?
+
+
+# Functors for functions
+
+~~~~ {.haskell}
+instance MyFunctor ((,) a) where
+    myfmap f (a, b) = (a, f b)
+~~~~
+
+Anyone want to take a crack at this?
+
+~~~~ {.haskell}
+instance MyFunctor ((->) a) where
+    {- ... -}
+~~~~
+
+
+# Functors for functions
+
+A definition wasn't too hard to come up with:
+
+~~~~ {.haskell}
+instance MyFunctor ((->) a) where
+    myfmap f g = \x -> f (g x)
+~~~~
+
+But what does this *mean*?
+
+* It is clearly *not* a container.
+
+
+# Functors for IO
+
+We already touched on functors in the context of `IO`.
+
+~~~~ {.haskell}
+readFile "/etc/passwd"
+~~~~
+
+This executes a real-world action, and gives us back a `String`.
+
+~~~~ {.haskell}
+(length . lines) `fmap` readFile "/etc/passwd"
+~~~~
+
+This executes the same real-world action, and gives us back...*what?*
+
+
+# Functor laws
+
+Mapping the identity function has no effect on the result.
+
+~~~~ {.haskell}
+fmap id === id
+~~~~
+
+Mapping the composition of two functions is the same as composing the
+mapping of the same functions.
+
+~~~~ {.haskell}
+fmap (g . h) = (fmap g) . (fmap h)
+~~~~
+
+
+# Lifting, revisited
+
+The standard way of writing the type of `fmap` can be a bit obscure:
+
+~~~~ {.haskell}
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+~~~~
+
+
+# Lifting, revisited
+
+Functions in Haskell are always *curried*, so `fmap` "is really" a
+function of one argument that returns another function.
+
+Let's add parentheses to make this clear.
+
+~~~~ {.haskell}
+class Functor f where
+    fmap :: (a -> b) -> (f a -> f b)
+~~~~
+
+It *lifts* its first argument from being a normal function to one that
+operates in this universe where everything is shrouded in `f`.
+
+
+# Why focus on functors?
+
+You'll come across the damn things everywhere in Haskell.
+
+Next to `Monoid`, `Functor` is one of the simplest abstractions in
+Haskell.
+
+The fact that `(->) a` is a `Functor` (but *not* a container) is
+*invaluable*:
+
+* It dislodges us from using limiting container-focused metaphors to
+  think about these abstractions.
+
+
+# Giving `f` a name
+
+~~~~ {.haskell}
+class Functor f where
+    fmap :: (a -> b) -> (f a -> f b)
+~~~~
+
+So containers are only a training-wheels metaphor.
+
+It'll still be helpful to generically refer to this `f` thing by a
+name.
+
+We'll call it a *context*.
+
+
+# Contexts
+
+The `[]` functor:
+
+* The context is a list.
+
+The `(->) a` functor:
+
+* Our context is a function that has a first argument of type `a` (a
+  "read-only environment").
+
+The `IO` functor:
+
+* Our context is computations that may have real-world effects.
+
+
+# Applicative
+
+Here's our next step up the expressive ladder.
+
+~~~~ {.haskell}
+class Functor f => Applicative f where
+    pure  :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+~~~~
+
+The `pure` function takes a value and lifts it into our new context.
+
+
+# Where "applicative" comes from
+
+What about `(<*>)`?
+
+Consider its similarity to both `fmap` and `($)`.
+
+~~~~ {.haskell}
+(<*>) :: f (a -> b) -> f a -> f b
+fmap  ::   (a -> b) -> f a -> f b
+($)   ::   (a -> b) ->   a ->   b
+~~~~
+
+*They're clearly all related!*
+
+* `($)` is function application
+
+* `fmap` is function application lifted to functors
+
+* `(<*>)` is function application lifted to functors, but where the
+  initial function is wrapped in our context `f` too
+
+This is the origin of the name "applicative".
+
+
+# Applicative laws
+
+Just as with monoids and functors, instances of `Applicative` must
+follow some laws.
+
+In this case, there are 4 laws.
+
+You can refer to them
+[at the Typeclassopedia](http://www.haskell.org/haskellwiki/Typeclassopedia#Laws_2)
+if you're interested.
+
+
+# Just one Applicative instance
+
+~~~~ {.haskell}
+class Functor f => Applicative f where
+    pure  :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+~~~~
+
+This will give us the flavour of the `Applicative` class.
+
+~~~~ {.haskell}
+instance Applicative Maybe where
+    pure x = Just x
+~~~~
+
+What should the implementation of `(<*>)` look like?
+
+~~~~ {.haskell}
+-- (<*>) :: f     (a -> b) -> f     a -> f     b
+(<*>)    :: Maybe (a -> b) -> Maybe a -> Maybe b
+~~~~
+
+Take 2 minutes to write your own.
+
+
+# Just one Applicative instance
+
+~~~~ {.haskell}
+class Functor f => Applicative f where
+    pure  :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+~~~~
+
+This will give us the flavour of the `Applicative` class.
+
+~~~~ {.haskell}
+instance Applicative Maybe where
+    pure x = Just x
+~~~~
+
+What should the implementation of `(<*>)` look like?
+
+~~~~ {.haskell}
+(<*>) :: Maybe (a -> b) -> Maybe a -> Maybe b
+
+Just f <*> Just x = Just (f x)
+_      <*> _      = Nothing
+~~~~
+
+
+# Further study
+
+If you want to gain some good understanding of `Applicative`:
+
+* Write instances for lists, `Identity`, and `(->) a`
+
+Bonus material:
+
+~~~~ {.haskell}
+newtype MyConst a b = MyConst a
+~~~~
+
+Write `Functor` and `Applicative` instances for the `MyConst` type
+above.
+
+
+# Why all the fuss?
+
+Here's a tiny `Applicative`-powered parser for URL-encoded bytes such
+as `%27`.
+
+~~~~ {.haskell}
+import Control.Applicative
+import Data.Char (chr)
+import Numeric (readHex)
+import Text.Parsec (char, hexDigit)
+import Text.Parsec.String (Parser)
+
+hexChar :: Parser Char
+hexChar = char '%' *> (combo <$> hexDigit <*> hexDigit)
+  where combo a b = case readHex [a,b] of
+                      [(n,"")] -> chr n
+                      _        -> error "wat"
+~~~~
+
+This depends on:
+
+~~~~ {.haskell}
+-- Sequence two actions, discarding the result of the first.
+(*>) :: Applicative f => f a -> f b -> f b
+
+-- You'll see this everywhere.
+(<$>) = fmap
+~~~~
+
+
+# Going deeper
+
+Let's parse an entire `application/x-www-form-urlencoded` string.
+
+They look like this:
+
+~~~~
+name=bryan+o%27sullivan&city=san+francisco
+~~~~
+
+Top-level parser:
+
+~~~~ {.haskell}
+query = pair `sepBy` char '&'
+~~~~
+
+We'll revisit `sepBy` in a moment.
+
+~~~~ {.haskell}
+-- Zero or more elements, separated by a separator.
+sepBy :: Alternative f => f a -> f sep -> f [a]
+~~~~
+
+First, we must grok `Alternative`.
+
+
+# The `Alternative` class
+
+This class combines monoids with applicative functors:
+
+~~~~ {.haskell}
+class Applicative f => Alternative f where
+    empty :: f a
+    (<|>) :: f a -> f a -> f a
+~~~~
+
+`empty` corresponds to `mempty`.
+
+* When parsing, think of this as "the parse failed".
+
+`(<|>)` corresponds to `mappend`/`(<>)`.
+
+* When parsing, think of this as "try the first parse; if it fails,
+  try the second".
+
+
+# Some handy combinators
+
+Notice that
+
+~~~~ {.haskell}
+-- Zero or more elements, separated by a separator.
+sepBy :: Alternative f => f a -> f sep -> f [a]
+sepBy p sep = sepBy1 p sep <|> pure []
+
+-- One or more elements, separated by a separator.
+sepBy1 :: Alternative f => f a -> f sep -> f [a]
+sepBy1 p sep = (:) <$> p <*> many (sep *> p)
+
+many :: Alternative f => f a -> f [a]
+~~~~
+
+
+# More parsing
+
+~~~~ {.haskell}
+pair :: Parser (String, Maybe String)
+pair = (,) <$> many1 urlChar
+           <*> optional (char '=' *> many urlChar)
+
+urlChar = oneOf urlBaseChars
+      <|> hexChar
+      <|> ' ' <$ char '+'
+~~~~
+
+New combinators:
+
+~~~~ {.haskell}
+optional :: Alternative f => f a -> f (Maybe a)
+
+-- Replace all locations in the input with the same value.
+(<$) :: Functor f => a -> f b -> f a
+~~~~
+
+
+# Our complete parser
+
+This code is amazingly compact and readable!
+
+~~~~ {.haskell}
+query = pair `sepBy` char '&'
+
+pair :: Parser (String, Maybe String)
+pair = (,) <$> many1 urlChar
+           <*> optional (char '=' *> many urlChar)
+
+urlChar = oneOf urlBaseChars
+      <|> hexChar
+      <|> ' ' <$ char '+'
+
+hexChar :: Parser Char
+hexChar = char '%' *> (eval <$> hexDigit <*> hexDigit)
+  where eval a b = case readHex [a,b] of
+                     [(n,"")] -> chr n
+                     _        -> error "wat"
+
+urlBaseChars = ['a'..'z']++['A'..'Z']++['0'..'9']++"$-_.!*'(),"
+~~~~
+
+
+# And finally, on to `Monad`
+
+Every `Applicative` is a `Functor`.
+
+And every `Monad` is an `Applicative`.
+
+~~~~ {.haskell}
+class Monad m where
+    return :: a -> m a
+    (>>=)  :: m a -> (a -> m b) -> m b
+~~~~
+
+`return` is the same as `pure`.
+
+What about `(>>=)` ("bind")?
+
+Where does it fit into our mental universe?
+
+
+# A convenient variation
+
+There's a standard function named `(=<<)` which is exactly `(>>=)`,
+but with its arguments flipped.
+
+~~~~ {.haskell}
+(>>=) :: Monad m => m a        -> (a -> m b) -> m b
+(=<<) :: Monad m => (a -> m b) -> m a        -> m b
+~~~~
+
+Why should we care?
+
+
+# Let's revisit an earlier slide
+
+Remember this?
+
+~~~~ {.haskell}
+(<*>) :: Applicative f => f (a -> b) -> f a -> f b
+fmap  :: Functor f =>       (a -> b) -> f a -> f b
+($)   ::                    (a -> b) ->   a ->   b
+~~~~
+
+These are all different ways of applying a function to a value.
+
+
+
+
+# Let's revisit an earlier slide
+
+A small change: add `(=<<)`.
+
+~~~~ {.haskell}
+(=<<) :: Monad m =>         (a -> m b) -> m a -> m b
+
+(<*>) :: Applicative f => f (a -> b)   -> f a -> f b
+fmap  :: Functor f =>       (a -> b)   -> f a -> f b
+($)   ::                    (a -> b)   ->   a ->   b
+~~~~
+
+So really, the `(>>=)` operator is "just" another application
+operator, but its flipped argument order obscures this.
+
+
+# What `Functor` and `Applicative` cannot do
+
+Consider application with functors and applicative functors:
+
+~~~~ {.haskell}
+(<*>) :: Applicative f => f (a -> b)   -> f a -> f b
+fmap  :: Functor f =>       (a -> b)   -> f a -> f b
+~~~~
+
+How do we ensure that they can only operate on the *elements* of a
+container?
+
+* Their function argument *cannot see or influence* `f` at all.
+
+* As a result, they *must* be oblivious to the enclosing structure of
+  the container (or computational context, or whatever).
+
+
+# From `Applicative` to `Monad`
+
+The key to `Monad` is that the `a -> m b` function can take a normal
+Haskell value *and use it to decide* what `m b` to give back:
+
+* It is able to influence the container's structure, change the
+  context, launch the nukes, or what have you.
+
+~~~~ {.haskell}
+(=<<) :: Monad m =>         (a -> m b) -> m a -> m b
+
+(<*>) :: Applicative f => f (a -> b)   -> f a -> f b
+~~~~
+
+Compared to `Applicative`, `Monad` is both more powerful *and* harder
+to reason about.
+
+
+# The present and future of these classes
+
+`Applicative` and `Functor` are related. `Monad` is independent of the
+other two due to accidents of history.
+
+This will change with GHC 7.10.
+
+
+# A useful rule of thumb
+
+Always try to use the *least powerful* abstraction you can.
+
+Use `Applicative` in preference to `Monad`.
+
+Use `Functor` in preference to `Applicative`.
+
+(Unless you can't, of course.)
+
+Why?
+
+* The less powerful the abstraction, the easier its behaviour is to
+  reason about.
+
+* It becomes harder for you and your users to perform foot-shooting.

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!-- saved from url=(0054)http://www.scs.stanford.edu/14sp-cs240h/labs/lab1.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Stanford CS240h Lab 1</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://www.scs.stanford.edu/14sp-cs240h/labs/local.css">
+</head>
+<body><article class="container">
+<header>
+<h1 class="title">Stanford CS240h Lab 1</h1>
+</header>
+<p>You will write a simple function that performs <a href="http://en.wikipedia.org/wiki/Glob_%28programming%29">glob matching</a> Glob matching is a simple form of pattern matching (i.e., regular expressions but greatly reduced).</p>
+<p>The function should have the type:</p>
+<pre><code>    type GlobPattern = String
+
+    matchGlob :: GlobPattern -&gt; String -&gt; Bool</code></pre>
+<p>Where the first argument will be the glob pattern and the second argument will be the string to match on. The function should return <code>True</code> if the string matches the glob.</p>
+<p>You are encouraged to use only the base package of Haskell for this lab. So hand roll a parser yourself.</p>
+<p>We are providing a skeleton Cabal project to help get started, download it from <a href="http://www.scs.stanford.edu/14sp-cs240h/labs/lab1.tar.gz">here</a>.</p>
+<h2 id="due-date">Due Date</h2>
+<p>Lab 1 should be submitted by the start of class (12:50pm) on <em>Tuesday, April 8th</em>.</p>
+<p>You have 48 hours of late days for the three labs. They are consumed in 24 hour blocks and are used automatically. After they are used, you'll have the maximum grade you can receive for a late lab reduced by 25% each day.</p>
+<h2 id="glob-matching">Glob Matching</h2>
+<p>Your glob matcher should handle any combination of the following patterns:</p>
+<ul>
+<li><code>'&lt;char&gt;'</code> -- matches a literal character (whatever <code>&lt;char&gt;</code> is). This extends to all characters except those that have a special meaning (special symbols).</li>
+<li><code>'?'</code> -- matches any single character.</li>
+<li><code>'*'</code> -- matches any string including the empty string.</li>
+<li><code>"[&lt;set match&gt;]"</code> -- matches any character from the set match set, explained below.</li>
+<li><code>"\&lt;char&gt;"</code> -- an escaped character, this matches a single literal character (<code>&lt;char&gt;</code>) where <code>&lt;char&gt;</code> can be any character, <em>including</em> the special symbols.</li>
+</ul>
+<h3 id="literal-matching">Literal Matching</h3>
+<p>Initially parsing the glob pattern you treat all characters as literal except for <code>?</code>, <code>*</code>, <code>\</code> and <code>[</code>. So the following glob patterns are exact matchers:</p>
+<ul>
+<li><code>"abcde"</code></li>
+<li><code>"a]b"</code></li>
+<li><code>"\a\b\c\d\e"</code> (equivalent to <code>"abcde"</code>)</li>
+<li><code>"-adf]ai1"</code></li>
+</ul>
+<p>Note that we don't treat <code>]</code> as a special character unless we are trying to close a set match.</p>
+<h3 id="escaped-literals">Escaped Literals</h3>
+<p>All special symbols can also be escaped (just as regular characters can be), giving us the following glob patterns that are also exact matches:</p>
+<ul>
+<li><code>"\[a]"</code> -- matches the string <code>"[a]"</code></li>
+<li><code>"\*\*\?"</code> -- matches the string <code>"**?"</code></li>
+<li><code>"\\a\\"</code> -- matches the string <code>"\a\"</code></li>
+<li><code>"ab\*ba"</code> -- matches <code>"ab*ba"</code></li>
+<li><code>"ab\[ba"</code> -- matches <code>"ab[ba"</code></li>
+<li><code>"ab[a\]]ba"</code> -- matches <code>"ab]ba"</code> or <code>"ababa"</code></li>
+</ul>
+<h3 id="set-match">Set Match</h3>
+<p>When parsing a glob pattern, when you find an unescaped <code>'['</code> then you need to parse the pattern from that point on as a set match. A range group is closed by the first unescaped <code>']'</code>.</p>
+<p>Please note that set matches can't nest, which means that once a set match has started, the <code>'['</code> character should be treated as a literal, not a special symbol any more. For example:</p>
+<ul>
+<li><code>"[ab[c]"</code> -- matches a single character that is either <code>'a'</code>, <code>'b'</code>, <code>'c'</code> or <code>'['</code>.</li>
+</ul>
+<p>A set match specifies a set of characters valid for matching the next character in the string we're matching on. It matches one character only.</p>
+<p>Set matches work as follows:</p>
+<ul>
+<li><code>"[abcd]"</code> -- matches a single character that is either <code>'a'</code>, <code>'b'</code>, <code>'c'</code> or <code>'d'</code>.</li>
+<li><code>"[a-z]"</code> -- matches any character in the range of <code>'a'</code> to <code>'z'</code>.</li>
+</ul>
+<p>This suggest then that set match be parsed as follows:</p>
+<ul>
+<li><code>'&lt;char&gt;'</code> -- add a single literal character to the possible characters we can match on as long as <code>&lt;char&gt;</code> isn't a special symbol.</li>
+<li><code>"&lt;char_1&gt;-&lt;char_2&gt;"</code> -- add all characters between the literal characters, <code>&lt;char_1&gt;</code> and <code>&lt;char_2&gt;</code>. We refer to these as <em>ranges</em> and specify them further below. A set match can contain multiple ranges.</li>
+<li><code>']'</code> -- an unescaped <code>']'</code> closes the set match.</li>
+<li><code>"\&lt;char&gt;"</code> -- an escaped character, this matches a single literal character (<code>&lt;char&gt;</code>) where <code>&lt;char&gt;</code> can be any character, <em>including</em> the set match special symbols.</li>
+</ul>
+<p>Please note that if you end up with an empty set match, either because it is just empty ("<code>[]</code>") or only contains empty ranges, then this can't match anything in a string and so the whole glob pattern can't match any string.</p>
+<h4 id="ranges">Ranges</h4>
+<p>Ranges have some subtle cases. The simple form is: <code>"&lt;char_1&gt;-&lt;char_2&gt;"</code>, for example <code>"a-z"</code> adds all characters between <code>'a'</code> to <code>'z'</code> to our set match. A set match can contain multiple ranges.</p>
+<p>The corner cases though are:</p>
+<ul>
+<li>A "<code>-</code>" as the first or last character of a set match should be treated as a literal <code>'-'</code>. So <code>"[---]"</code> would be valid as the first and last <code>'-'</code> are treated literally. So it's simply a range containing just <code>'-'</code>.</li>
+<li>A "<code>-</code>" following a range should be treated as a literal <code>'-'</code>. So <code>"[a-c-z]"</code> is a set match containing <code>'a', 'b', 'c', '-', 'z'</code>.</li>
+</ul>
+<p>Ranges should simply use the Haskell built-in <code>Ord</code> instance for <code>Char</code> for determining the range.</p>
+<p>You may also end up with a range that is empty (i.e., <code>"[z-a]"</code>).</p>
+<h4 id="examples">Examples</h4>
+<p>So for example:</p>
+<ul>
+<li><code>"[-abc]"</code> -- matches a single character that is either '-', 'b', or 'c'.</li>
+<li><code>"[abc-]"</code> -- same as above.</li>
+<li><code>"[--]"</code> -- matches a literal <code>-</code> character.</li>
+<li><code>"[---]"</code> -- is a range but of only one character, <code>-</code>.</li>
+<li><code>"[----]"</code> -- is a range (of just <code>-</code>) and a literal <code>-</code>, so it just matches a <code>-</code> character.</li>
+<li><code>"[a-d-z]"</code> -- matches <code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>, <code>-</code>, <code>z</code>.</li>
+<li><code>"[z-a]"</code> -- empty range, mathces nothing.</li>
+</ul>
+<h2 id="cabal----build-test-tool">Cabal -- Build &amp; Test Tool</h2>
+<p>Cabal is the standard build and packaging tool for Haskell. A starting framework is provided for you. You can find the user guide for Cabal <a href="http://www.haskell.org/cabal/users-guide/developing-packages.html#test-suites">here</a>.</p>
+<h2 id="provided-files">Provided Files</h2>
+<p>The files provided to get started are:</p>
+<ul>
+<li>globber.cabal -- specifies the build system.</li>
+<li>Globber.hs -- you should edit this file to implement a glob matcher</li>
+<li>TestGlobber.hs -- the test harness. You need to edit this and add your own tests!</li>
+</ul>
+<h2 id="building-lab-1">Building Lab 1</h2>
+<p>To get up and running (using Cabal), issue the following commands:</p>
+<pre><code>    cabal sandbox init</code></pre>
+<p>This will initiate a self-contained build environment where any dependencies you need are installed locally in the current directory. This helps avoid the Haskell equivalent of 'DLL Hell!'. If your version of cabal is older such that it doesn't have the <code>sandbox</code> command, then just proceed without it and it should all be fine.</p>
+<p>Next, you want to build the lab. For that, issue the following commands:</p>
+<pre><code>    cabal install --only-dependencies --enable-tests
+    cabal configure --enable-tests
+    cabal build</code></pre>
+<p>After that, you should also be able to run the test harness simply by typing:</p>
+<pre><code>    cabal test</code></pre>
+<p>And you'll get some pretty output!</p>
+<h2 id="testing-lab-1">Testing Lab 1</h2>
+<p>Some skeleton code for a test framework is provided in <code>TestHarness.hs</code>. You'll need to edit it to add your own tests. The test framework uses a Haskell package called <a href="http://hspec.github.io/">hspec</a>. Please refer to it for documentation on how to use it.</p>
+<h2 id="grading">Grading</h2>
+<p>While we strongly encourage you to take testing seriously and write a comprehensive test suite, we are only going to grade you on your glob matching implementation.</p>
+<p>Grading will be just done on functionality but we will try to give feedback on your coding style.</p>
+<h2 id="submitting">Submitting</h2>
+<p>First, simply type:</p>
+<pre><code>    cabal sdist</code></pre>
+<p>This will generate a tar file of your code in <code>dist/globber.tar.gz</code>.</p>
+<p>Then go to <a href="http://upload.ghc.io/">upload.ghc.io</a> and submit your work through the online form. You can resubmit as many times as you want up until the deadline.</p>
+<p>If you have any trouble submitting on-line, then please email the staff mailing <script type="text/javascript">
+<!--
+h='&#x73;&#x63;&#x73;&#46;&#x73;&#116;&#x61;&#110;&#102;&#x6f;&#114;&#100;&#46;&#x65;&#100;&#x75;';a='&#64;';n='&#x63;&#x73;&#50;&#52;&#48;&#104;&#x2d;&#x73;&#116;&#x61;&#102;&#102;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'list'+'<\/'+'a'+'>');
+// -->
+</script><a href="mailto:cs240h-staff@scs.stanford.edu">list</a><noscript>&amp;#108;&amp;#x69;&amp;#x73;&amp;#116;&amp;#32;&amp;#40;&amp;#x63;&amp;#x73;&amp;#50;&amp;#52;&amp;#48;&amp;#104;&amp;#x2d;&amp;#x73;&amp;#116;&amp;#x61;&amp;#102;&amp;#102;&amp;#32;&amp;#x61;&amp;#116;&amp;#32;&amp;#x73;&amp;#x63;&amp;#x73;&amp;#32;&amp;#100;&amp;#x6f;&amp;#116;&amp;#32;&amp;#x73;&amp;#116;&amp;#x61;&amp;#110;&amp;#102;&amp;#x6f;&amp;#114;&amp;#100;&amp;#32;&amp;#100;&amp;#x6f;&amp;#116;&amp;#32;&amp;#x65;&amp;#100;&amp;#x75;&amp;#x29;</noscript>.</p>
+</article>
+
+</body></html>

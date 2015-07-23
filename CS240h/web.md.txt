@@ -1,0 +1,449 @@
+% Web and Database Programming
+% May 15, 2014 - CS240H
+
+# Before we start...
+
+If you want to follow along on your laptop towards the end:
+
+  * For ghc-7.6:
+```bash
+$ cabal install simple wai-handler-devel
+```
+
+  * For ghc-7.8
+```bash
+$ git clone git://github.com/alevy/simple.git
+$ git clone git://github.com/alevy/postgresql-orm.git
+$ cd simple
+$ cabal install
+$ cd ../postgresql-orm
+$ cabal install
+$ cabal install wai-handler-devel
+```
+
+You'll also need to have PostgreSQL installed
+
+# Agenda
+
+ 1. Intro/motivation
+
+ 2. Modeling a web application in Haskell
+
+ 3. Build a content management system
+
+# Why should you care about web programming?
+
+  > * The WWW is starting to get _pretty_ popular
+
+  > * If you building something, there's a good chance you'll deploy as a web app
+      the internet
+
+  > * Even if your application doesn't seem very "webby"
+
+  > * HTTP becoming prevelent general-purpose protocol for APIs (both internal and external)
+    - Good client support
+    - Good server-side support (frameworks, SSL, virtual domains...)
+    - Easy to "sell" to management
+
+# How do you people write a web app?
+
+  * Actually, that depends...
+
+  * A busy space of frameworks
+
+  * Used to be dominated by Java
+
+    * terms like "Java Servlet Container", "J2EE", "Enterprise Java Beans", "POJO"
+
+    * everybody had a really bad experience with that in the late 90s/early 2Ks
+
+    * Java is still the primary server-side language for, e.g. Google, Amazon
+
+  * The cool kids are mostly using dynamic languages
+
+    * Ruby/Ruby on Rails/Sinatra
+
+    * Python/Django
+
+    * node.js/express
+
+    * PHP
+
+    * etc...
+
+
+# Web Programming - Most Popular Language Today?
+
+. . .
+
+![](popular-web-lang.png)
+
+# But why dynamic languages?
+
+![](zoolander.jpg)
+
+# But why dynamic languages?
+
+## Less verbose
+
+e.g. no type declerations
+
+```ruby
+x = 123
+
+def incr(y)
+  y + 1
+end
+```
+
+vs
+
+```java
+protected static int x = 123;
+
+public static int incr(int y) {
+  return y + 1;
+}
+```
+
+# But why dynamic languages?
+
+## Advanced features
+
+like closures
+
+```java
+Array.map(myarr, new Runnable() {
+  public void run(int elm) {
+    return elm * 42;
+  }
+})
+```
+
+vs.
+
+```ruby
+myarr.map {|elm| elm * 42}
+```
+
+# But why dynamic languages?
+
+## Other less compelling reasons
+
+  * Fast development and prototyping
+
+  * Dynamic language GOOD because _dynamic_ web sites!
+
+  > "When rendering web pages, often you have very many components interacting
+  on a web page. You have buttons over here and little widgets over there and
+  there are dozens of them on a webpage, as well as possibly dozens or hundreds
+  of web pages on your website that are all **dynamic**.
+  [...] using a statically typed language is
+  actually quite inflexible. [...] like the whole
+  system has to type check just to be able to move a button around"  
+  - Nick Kallen from Twitter
+
+
+# Is it really about dynamism?
+
+## No type declerations (but still typed)
+
+```haskell
+x = 123 -- :: Num a => a
+
+incr y = y + 1 -- :: Num a => a -> a
+```
+
+## Closures
+
+```haskell
+map (* 42) myarr
+```
+
+## A lot of the arguments are really about weaknesses in Java et al.
+
+# Modeling a web application in Haskell
+
+  * Claim: a web application does three things:
+    1. parses a request from the client
+    2. performs some side effects (e.g. reading/writing to a database)
+    3. generates some response for the client
+
+  * Given the following two types:
+
+    ```haskell
+    data Request = Request {pathInfo :: [String], requestMethod :: Method, ...}
+
+    data Response = Response Status [Header] String
+    ```
+
+  * Fill in the type for an `Application`:
+
+    ```haskell
+    type Application = ...
+    ```
+
+  Boilerplate code: [http://cs240h.scs.stanford.edu/Application.hs](Application.hs)
+
+# Modeling a web application in Haskell
+
+    ```haskell
+    data Request = Request {pathInfo :: [String], requestMethod :: Method, ...}
+
+    data Response = Response Status [Header] String
+
+    type Application = Request -> IO Response
+    ```
+
+## We've just implemented the WAI package -- "Web Application Interface"!
+
+# The WAI package
+
+  * Common interface between servers and applications so you can mix-and-match
+
+  * Servers:
+    - warp
+    - FastCGI
+    - wai-handler-devel (for development)
+
+  * App frameworks:
+    - Yesod
+    - Scotty
+    - Hails (shameless plug)
+    - Simple (shameless plug)
+    - Others through adapters
+
+# The WAI package
+
+```haskell
+data Request = Request {
+     requestMethod        :: Method
+  ,  httpVersion          :: HttpVersion
+  ,  rawPathInfo          :: ByteString
+  ,  rawQueryString       :: ByteString
+  ,  requestHeaders       :: RequestHeaders
+  ,  isSecure             :: Bool
+  ,  remoteHost           :: SockAddr
+  ,  pathInfo             :: [Text]
+  ,  queryString          :: Query
+  ,  requestBody          :: Source IO ByteString
+  ,  vault                :: Vault
+  ,  requestBodyLength    :: RequestBodyLength
+  ,  requestHeaderHost    :: Maybe B.ByteString
+  ,  requestHeaderRange   :: Maybe B.ByteString
+  }
+
+data Response
+    = ResponseFile Status ResponseHeaders FilePath (Maybe FilePart)
+    | ResponseBuilder Status ResponseHeaders Builder
+    | ResponseSource Status ResponseHeaders (forall b. WithSource IO (C.Flush Builder) b)
+    | ResponseRaw (forall b. WithRawApp b) Response
+
+type Application = Request -> IO Response
+```
+
+# A really simple application
+
+Let's build the simplest application that displays something in a browser
+
+* First install `wai` and `warp`:
+
+```bash
+$ cabal install wai warp
+```
+
+* Finally, build the app!
+
+```haskell
+module Main where
+
+import qualified Data.ByteString.Lazy.Char8 as L8
+import Network.HTTP.Types
+import Network.Wai
+import Network.Wai.Handler.Warp (run)
+
+app :: Application
+app req = return $ responseLBS status200 [] $ L8.pack "Hello, World"
+
+main :: IO ()
+main = do
+  run 3000 app
+```
+
+> * Demo Time!
+
+# Let's build a CMS!
+
+1. (Very) quick intro to _Simple_
+
+2. (Very) quick intro to _postgresql-orm_
+
+3. Write some code
+
+# _Simple_ - a web framework in Haskell
+
+_Simple_ is a web framework with one type:
+
+```haskell
+newtype Controller s a = Controller {
+  runController :: s -> Request -> IO (Either Response a, s)
+  }
+
+instance Monad Controller
+instance Applicative Controller
+instance MonadIO Controller
+```
+
+* Very small wrapper around WAI's `Application` type
+
+* Let's us refer to the `Request` anywhere without passing it around
+
+* Let's us refer to some application state anywhere without passing it around
+
+* Let's us decide we're ready to respond and stop computing
+
+# Some _Simple_ combinators
+
+* Stop computing and respond to a request:
+
+```haskell
+respond :: Response -> Controller s a
+okHtml :: ByteString -> Response
+notFound :: Response
+
+respond $ okHtml "Hello world"
+```
+
+* Get the request and app state:
+
+```haskell
+request :: Controller s Request
+controllerState :: Controller s s
+```
+
+* Parse query and form parameters:
+
+```haskell
+queryParam' :: Parseable p => Controller s p
+parseForm :: Controller s ([Param], (ByteString, FileInfo ByteString))
+```
+
+# Some _Simple_ combinators
+
+* Routing combinators:
+
+```haskell
+-- Match on next dir in path
+routeName :: Text -> Controller s () -> Controller s ()
+routeName "articles" $ ...
+
+-- Treat first dir in path as query param
+routeVar :: Text -> Controller s () -> Controller s ()
+routeName "articles" $ routeVar "name" $ ...
+
+-- Match whole pattern of path
+routePattern :: Text -> Controller s () -> Controller s ()
+routePattern "/articles/:name" $ ...
+
+-- Match if no path left
+routeTop :: Controller s () -> Controller s ()
+
+-- Match on request method
+routeMethod :: Method -> Controller s () -> Controller s ()
+routeMethod GET $ routePatter "/articles/:name"
+
+-- Match hostname
+routeHost :: ByteString -> Controller s () -> Controller s ()
+```
+
+# Higher-level _Simple_ combinators
+
+Common case is to match on method and a particular path pattern:
+
+```haskell
+get :: Text -> Controller s () -> Controller s ()
+get ptrn ctrl = routeMethod GET $ routePattern ptrn ctrl
+
+post :: Text -> Controller s () -> Controller s ()
+post ptrn ctrl = routeMethod POST $ routePattern ptrn ctrl
+```
+
+So a typical small app might look like:
+
+```haskell
+myapp :: Controller s ()
+myapp = do
+  get "/" $ respond $ okHtml "Hello World"
+  get "/foo" $ respond $ okHtml "bar"
+```
+
+# PostgreSQL ORM
+
+  * Object relational mapper (ORM)
+    - maps from native types to SQL
+    - In our case maps to PostgreSQL flavored SQL
+
+  * Haskell types must be of the form:
+
+```haskell
+data Article = Article
+  { articleId :: DBKey
+  , articleTitle :: Text
+  , articleBody :: Text
+  , articleShortName :: Text }
+```
+
+  * Instances of the `Model` class:
+
+```haskell
+class Model a where
+  modelInfo :: ModelInfo a
+  modelRead :: RowParser a
+  modelWrite :: a -> [Action]
+
+data DBKey = DBKey !Int64 | NullKey
+
+data ModelInfo a = ModelInfo {
+    modelTable :: ByteString
+  , modelColumns :: [ByteString]
+  , modelPrimaryColumn :: Int
+  , modelGetPrimaryKey :: a -> DBKey }
+```
+
+# PostgreSQL ORM
+
+* If the `Model` derives `Generic` we don't need to write an implementation
+
+```haskell
+{-# LANGUAGE DeriveGeneric #-}
+import GHC.Generics
+
+data Article = Article
+  { articleId :: DBKey
+  , articleTitle :: Text
+  , articleBody :: Text
+  , articleShortName :: Text } deriving (Show, Generic)
+
+instance Model Article
+```
+
+* This gives us access to:
+
+```haskell
+save :: Model a => Connection -> a -> IO ()
+findAll :: Model a => Connection -> IO [a]
+findRow :: Model a => Connection -> DBRef a -> IO (Maybe a)
+```
+
+  * Because we're in Haskell, let's us avoid a bunch of edge cases:
+    * Fields cannot be null (unless they are a `Maybe`)
+    * Fields cannot be different types (unless they are an `Either`)
+    * Validation because redundant in many cases
+
+# OK, let's get to coding:
+
+```bash
+$ cabal install simple
+$ smpl create my_cms
+```
+

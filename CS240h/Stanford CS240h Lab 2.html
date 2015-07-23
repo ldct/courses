@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- saved from url=(0054)http://www.scs.stanford.edu/14sp-cs240h/labs/lab2.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Stanford CS240h Lab 2</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://www.scs.stanford.edu/14sp-cs240h/labs/local.css">
+</head>
+<body><article class="container">
+<header>
+<h1 class="title">Stanford CS240h Lab 2</h1>
+</header>
+<p>You will write a basic chat server. It will support any number of clients and allow them to join and leave at any time. Please implement it as follows:</p>
+<ul>
+<li>Clients and the server will communicate over TCP.</li>
+<li>The server should read the <code>CHAT_SERVER_PORT</code> environment variable which will contain an <code>Int</code> and listen on that port for clients.</li>
+<li>Client's should have a username picked for them automatically by the server. Usernames should simply be a number, where the server simply maintains a counter (starting from 1) for which client this is by ordering of connection. I.e., first client to connect gets username <code>1</code>, second client gets username <code>2</code>.</li>
+<li>Clients will simply be telnet, sending UTF-8 encoded text to the server.</li>
+<li>A message from a client C should be sent to all other connected clients but not echoed back to C. The message M from client C should be sent prefixed by <code>"&lt;C.username&gt;: "</code>. For example, if client with username <code>"12"</code> sends the message <code>"hello world"</code>, it should be sent to all other connected clients as: <code>"12: hello world"</code>.</li>
+<li>When a client C with username U joins the server, please broadcast this message to all clients (including C): <code>"U has joined"</code></li>
+<li>When a client C with username U quits the server, please broadcast this message: <code>"U has left"</code></li>
+</ul>
+<p>We are providing a skeleton Cabal project to help get started, download it from <a href="http://www.scs.stanford.edu/14sp-cs240h/labs/lab2.tar.gz">here</a>.</p>
+<h2 id="example-transcript">Example Transcript</h2>
+<pre><code>1 has joined
+2 has joined
+1: hello!
+2: hi
+3 has joined
+3: hi
+1 has left
+2: hi 3</code></pre>
+<h2 id="bonus">Bonus</h2>
+<p>As a bonus, you can implement rooms and private messaging. All clients should connect initially to a default room so that testing of the standard assingment still works.</p>
+<p>The syntax for changing to a new room is:</p>
+<pre><code>/join &lt;room name&gt;</code></pre>
+<p>i.e., <code>/join haskell</code> will cause the client to change to the 'haskell' chat room.</p>
+<p>Please ensure the command is valid (i.e., only contains 1 argument), if it isn't please respond to the client with:</p>
+<pre><code>server: invalid /join command</code></pre>
+<p>Rooms should function as if they were independent servers. So when a user <code>U</code> leaves rooms <code>R1</code> and joins room <code>R2</code>, two things should happen:</p>
+<ul>
+<li>All users in R1 should receive a "U has left" message</li>
+<li>All users in R2 should receive a "U has joined" message</li>
+<li>U itself should receive receive only the "U has joined" message.</li>
+</ul>
+<p>The syntax for messaging is:</p>
+<pre><code>/msg &lt;username&gt; &lt;message&gt;</code></pre>
+<p>i.e., <code>/msg 12 hello world</code> will send a private message to client 12.</p>
+<p>Please ensure the command is valid, if it isn't then respond to the client with:</p>
+<pre><code>server: invalid /msg command</code></pre>
+<p>Finally, you don't need to worry that a client can no longer send a message <code>"/msg"</code> or <code>"/join"</code> to everyone, that will simply be a limitation.</p>
+<h2 id="due-date">Due Date</h2>
+<p>Lab 2 should be submitted by the start of class (12:50pm) on <em>Tuesday, April 22nd</em>.</p>
+<p>You have 48 hours of late days for the three labs. They are consumed in 24 hour blocks and are used automatically. After they are used, you'll have the maximum grade you can receive for a late lab reduced by 25% each day.</p>
+<h2 id="cabal----build-test-tool">Cabal -- Build &amp; Test Tool</h2>
+<p>Cabal is the standard build and packaging tool for Haskell. A starting framework is provided for you. You can find the user guide for Cabal <a href="http://www.haskell.org/cabal/users-guide/developing-packages.html#test-suites">here</a>.</p>
+<h2 id="provided-files">Provided Files</h2>
+<p>The files provided to get started are:</p>
+<ul>
+<li>chat.cabal -- specifies the build system.</li>
+<li>Server.hs -- main module, simply runs the chat server.</li>
+<li>Chat.hs -- you should edit this file to implement your chat server.</li>
+<li>TestChat.hs -- the test harness. You need to edit this and add your own tests!</li>
+</ul>
+<p>If you add any new files, please make sure to add them into <code>chat.cabal</code> as otherwise they won't be packaged up when you run <code>cabal sdist</code> and then they won't be sumitted.</p>
+<h2 id="building-lab-2">Building Lab 2</h2>
+<p>To get up and running (using Cabal), issue the following commands:</p>
+<pre><code>    cabal sandbox init</code></pre>
+<p>This will initiate a self-contained build environment where any dependencies you need are installed locally in the current directory. This helps avoid the Haskell equivalent of 'DLL Hell!'. If your version of cabal is older such that it doesn't have the <code>sandbox</code> command, then just proceed without it and it should all be fine.</p>
+<p>Next, you want to build the lab. For that, issue the following commands:</p>
+<pre><code>    cabal install --only-dependencies --enable-tests
+    cabal configure --enable-tests
+    cabal build</code></pre>
+<p>After that, you should also be able to run the test harness simply by typing:</p>
+<pre><code>    cabal test</code></pre>
+<p>And you'll get some pretty output!</p>
+<h2 id="testing-lab-2">Testing Lab 2</h2>
+<p>Some skeleton code for a test framework is provided in <code>TestHarness.hs</code>. You'll need to edit it to add your own tests. The test framework uses a Haskell package called <a href="http://hspec.github.io/">hspec</a>. Please refer to it for documentation on how to use it.</p>
+<p>We also strongly encourage the use of <a href="http://hackage.haskell.org/package/QuickCheck">quick check</a>! It can be integrated with the test driver that HSpec provides, please see the skeleton code that has an example of how.</p>
+<h2 id="grading">Grading</h2>
+<p>While we strongly encourage you to take testing seriously and write a comprehensive test suite, we are only going to grade you on your glob matching implementation.</p>
+<p>Grading will be just done on functionality but we will try to give feedback on your coding style.</p>
+<h2 id="submitting">Submitting</h2>
+<p>First, simply type:</p>
+<pre><code>    cabal sdist</code></pre>
+<p>This will generate a tar file of your code in <code>dist/globber.tar.gz</code>.</p>
+<p>Then go to <a href="http://upload.ghc.io/">upload.ghc.io</a> and submit your work through the online form. You can resubmit as many times as you want up until the deadline.</p>
+<p>If you have any trouble submitting on-line, then please email the staff mailing <script type="text/javascript">
+<!--
+h='&#x73;&#x63;&#x73;&#46;&#x73;&#116;&#x61;&#110;&#102;&#x6f;&#114;&#100;&#46;&#x65;&#100;&#x75;';a='&#64;';n='&#x63;&#x73;&#50;&#52;&#48;&#104;&#x2d;&#x73;&#116;&#x61;&#102;&#102;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'list'+'<\/'+'a'+'>');
+// -->
+</script><a href="mailto:cs240h-staff@scs.stanford.edu">list</a><noscript>&amp;#108;&amp;#x69;&amp;#x73;&amp;#116;&amp;#32;&amp;#40;&amp;#x63;&amp;#x73;&amp;#50;&amp;#52;&amp;#48;&amp;#104;&amp;#x2d;&amp;#x73;&amp;#116;&amp;#x61;&amp;#102;&amp;#102;&amp;#32;&amp;#x61;&amp;#116;&amp;#32;&amp;#x73;&amp;#x63;&amp;#x73;&amp;#32;&amp;#100;&amp;#x6f;&amp;#116;&amp;#32;&amp;#x73;&amp;#116;&amp;#x61;&amp;#110;&amp;#102;&amp;#x6f;&amp;#114;&amp;#100;&amp;#32;&amp;#100;&amp;#x6f;&amp;#116;&amp;#32;&amp;#x65;&amp;#100;&amp;#x75;&amp;#x29;</noscript>.</p>
+</article>
+
+</body></html>

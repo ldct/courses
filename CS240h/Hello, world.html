@@ -1,0 +1,511 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0059)http://www.scs.stanford.edu/14sp-cs240h/slides/testing.html -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta name="generator" content="pandoc">
+  <title>Hello, world</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Hello, world</h1>
+</div>
+<p>I'm Bryan O'Sullivan.</p>
+<p>I work at Facebook.</p>
+<p>Previously, I founded a company that built half its product in Haskell.</p>
+<p>I wrote a book about Haskell.</p>
+<p>I've written some Haskell libraries.</p>
+<h1 id="lets-talk-about-testing">Let's talk about testing</h1>
+<p>Have any profs ever talked to you about testing?</p>
+<h1 id="testing-in-industry">Testing in industry</h1>
+<p>There are a few "states of the art" for testing software:</p>
+<ul>
+<li><p>Excel spreadsheet full of stuff to do by hand (I am not making this up)</p></li>
+<li><p>Unit tests</p></li>
+<li><p>Integration tests</p></li>
+<li><p>Fuzz tests</p></li>
+</ul>
+<h1 id="what-am-i-interested-in">What am I interested in?</h1>
+<p>For today, I want to talk about unit tests and their more interesting descendants.</p>
+<p>Shamelessly borrowing from Wikipedia:</p>
+<pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">class</span> TestAdder {
+    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">testSum</span>() {
+        Adder adder = <span class="kw">new</span> <span class="fu">AdderImpl</span>();
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1</span>, <span class="dv">1</span>) == <span class="dv">2</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1</span>, <span class="dv">2</span>) == <span class="dv">3</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">2</span>, <span class="dv">2</span>) == <span class="dv">4</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">0</span>, <span class="dv">0</span>) == <span class="dv">0</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(-<span class="dv">1</span>, -<span class="dv">2</span>) == -<span class="dv">3</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(-<span class="dv">1</span>, <span class="dv">1</span>) == <span class="dv">0</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1234</span>, <span class="dv">988</span>) == <span class="dv">2222</span>);
+    }
+}</code></pre>
+<h1 id="whats-the-problem">What's the problem?</h1>
+<p>Count the number of test cases below.</p>
+<pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">class</span> TestAdder {
+    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">testSum</span>() {
+        Adder adder = <span class="kw">new</span> <span class="fu">AdderImpl</span>();
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1</span>, <span class="dv">1</span>) == <span class="dv">2</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1</span>, <span class="dv">2</span>) == <span class="dv">3</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">2</span>, <span class="dv">2</span>) == <span class="dv">4</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">0</span>, <span class="dv">0</span>) == <span class="dv">0</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(-<span class="dv">1</span>, -<span class="dv">2</span>) == -<span class="dv">3</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(-<span class="dv">1</span>, <span class="dv">1</span>) == <span class="dv">0</span>);
+        <span class="fu">assert</span>(adder.<span class="fu">add</span>(<span class="dv">1234</span>, <span class="dv">988</span>) == <span class="dv">2222</span>);
+    }
+}</code></pre>
+<p>Okay, don't. It's 7.</p>
+<h1 id="the-limits-of-unit-tests">The limits of unit tests</h1>
+<p>Unit tests are only useful up to a point.</p>
+<div class="figure">
+<img src="./Hello, world_files/patience.png">
+</div>
+<p>Your patience and ability to think up nasty corner cases are VERY finite.</p>
+<p>Best to use them wisely.</p>
+<p>But how?</p>
+<h1 id="outsourcing">Outsourcing</h1>
+<p>For patience, we have computers.</p>
+<p>For nasty corner cases, we have random number generators.</p>
+<p>Let's put them to use.</p>
+<h1 id="a-simple-example-utf-16-encoding">A simple example: UTF-16 encoding</h1>
+<p>UTF-16 is a Unicode encoding that:</p>
+<ul>
+<li><p>takes a <em>code point</em> (a Unicode character)</p></li>
+<li><p>turns it into 1 or 2 16-bit <em>code units</em></p></li>
+</ul>
+<p>Variable length encoding:</p>
+<ul>
+<li><p>code points below 0x10000 are encoded as a single code unit</p></li>
+<li><p>at and above 0x10000, two code units</p></li>
+</ul>
+<h1 id="encoding-a-single-code-point">Encoding a single code point</h1>
+<p>We know that <code>Char</code> represents a Unicode code point.</p>
+<p>The <code>Word16</code> type represents a 16-bit value.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Word</span> (<span class="dt">Word16</span>)</code></pre>
+<p>What should the type signature of <code>encodeChar</code> be?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">encodeChar ::</span> <span class="fu">???</span></code></pre>
+<h1 id="the-base-case-is-easy">The base case is easy</h1>
+<p>We can easily turn the single-code-unit case into some Haskell using a few handy functions.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Char</span> (ord)
+
+ord<span class="ot"> ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+
+fromIntegral<span class="ot"> ::</span> (<span class="dt">Integral</span> a, <span class="dt">Num</span> b) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> b</code></pre>
+<p>We use <code>fromIntegral</code> to convert from <code>Int</code> to <code>Word16</code> because Haskell will not explicitly coerce for us.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">encodeChar ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> [<span class="dt">Word16</span>]
+encodeChar x
+  <span class="fu">|</span> w <span class="fu">&lt;</span> <span class="dv">0x10000</span> <span class="fu">=</span> [fromIntegral w]
+  <span class="kw">where</span> w <span class="fu">=</span> ord x</code></pre>
+<h1 id="the-two-code-unit-case">The two-code-unit case</h1>
+<p>To encode code points above 0x10000, we need some new bit-banging functions.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Bits</span> ((.&amp;.), shiftR)</code></pre>
+<p>The <code>.&amp;.</code> operator gives us bitwise <em>and</em>, while <code>shiftR</code> is a right shift.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">encodeChar ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> [<span class="dt">Word16</span>]
+encodeChar x
+  <span class="fu">|</span> w <span class="fu">&lt;</span> <span class="dv">0x10000</span> <span class="fu">=</span> [fromIntegral w]
+  <span class="fu">|</span> otherwise   <span class="fu">=</span> [fromIntegral a, fromIntegral b]
+  <span class="kw">where</span> w <span class="fu">=</span> ord x
+        a <span class="fu">=</span> ((w <span class="fu">-</span> <span class="dv">0x10000</span>) <span class="ot">`shiftR`</span> <span class="dv">10</span>) <span class="fu">+</span> <span class="dv">0xD800</span>
+        b <span class="fu">=</span> (w <span class="fu">.&amp;.</span> <span class="dv">0x3FF</span>) <span class="fu">+</span> <span class="dv">0xDC00</span></code></pre>
+<h1 id="basic-testing">Basic testing</h1>
+<p>If you want unit tests, <code>HUnit</code> is the package you need.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Test.HUnit</span> (assertEqual)
+
+testASCII <span class="fu">=</span>
+  assertEqual <span class="st">"ASCII encodes as one code unit"</span>
+    <span class="dv">1</span> (length (encodeChar <span class="ch">'a'</span>))</code></pre>
+<h1 id="a-bad-test">A bad test</h1>
+<p>Let's intentionally write a bogus test.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">badTest <span class="fu">=</span> <span class="kw">do</span>
+  assertEqual <span class="st">"sestertius encodes as one code unit"</span>
+    <span class="dv">1</span> (length (encodeChar <span class="ch">'\x10198'</span>))</code></pre>
+<p>If we run this in <code>ghci</code>:</p>
+<pre><code>ghci&gt; badTest
+*** Exception: HUnitFailure "sestertius encodes as one code unit\nexpected: 1\n but got: 2"</code></pre>
+<p>Not pretty, but it works.</p>
+<h1 id="but-wait-unit-tests">But wait: unit tests?</h1>
+<p>So I just slammed unit tests and now I'm showing you how to write them?</p>
+<p>Well, we can generalize past the limits of unit tests.</p>
+<h1 id="a-proxy-for-a-bigger-picture">A proxy for a bigger picture</h1>
+<p>What do we really want with this test?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">testASCII <span class="fu">=</span> <span class="kw">do</span>
+  assertEqual <span class="st">"ASCII encodes as one code unit"</span>
+    <span class="dv">1</span> (length (encodeChar <span class="ch">'a'</span>))</code></pre>
+<p>We are really asserting that <em>every</em> ASCII code point encodes as a single code unit.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">testOne char <span class="fu">=</span> <span class="kw">do</span>
+  assertEqual <span class="st">"ASCII encodes as one code unit"</span>
+    <span class="dv">1</span> (length (encodeChar char))</code></pre>
+<h1 id="hmm-better">Hmm: better?</h1>
+<p>What if we parameterize our test:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">testOne char <span class="fu">=</span> <span class="kw">do</span>
+  assertEqual <span class="st">"ASCII encodes as one code unit"</span>
+    <span class="dv">1</span> (length (encodeChar char))</code></pre>
+<p>And drive it from a harness:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">testASCII <span class="fu">=</span> mapM_ testOne [<span class="ch">'\0'</span><span class="fu">..</span><span class="ch">'\127'</span>]</code></pre>
+<h1 id="taking-stock">Taking stock</h1>
+<p>This is better, in that our original test is generalized.</p>
+<p>It's also worse, because we're exhaustively enumerating every single test input.</p>
+<p>We get away with it here because Unicode is small, and computers are fast.</p>
+<p>But it's the <em>principle</em> of the thing: automate better!</p>
+<h1 id="enter-quickcheck">Enter QuickCheck</h1>
+<p>Forget about <code>HUnit</code>, here's the package we'll focus on.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Test.QuickCheck</span>
+
+prop_encodeOne c <span class="fu">=</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<p>In <code>ghci</code>:</p>
+<pre><code>ghci&gt; quickCheck prop_encodeOne
++++ OK, passed 100 tests.</code></pre>
+<h1 id="what-just-happened">What just happened?</h1>
+<p>Why did <code>quickCheck</code> say this:</p>
+<pre><code>+++ OK, passed 100 tests.</code></pre>
+<p>It did the following:</p>
+<ul>
+<li><p><em>generated</em> 100 random values for us</p></li>
+<li><p>fed each one to <code>prop_encodeOne</code></p></li>
+<li><p>ensured that each test passed</p></li>
+</ul>
+<h1 id="now-i-have-a-headache">Now I have a headache</h1>
+<p>Let's look back at our "test function":</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">prop_encodeOne c <span class="fu">=</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<p>This is <em>very suspicious</em>.</p>
+<p>We know that <code>encodeChar</code> sometimes produces lists of length 2.</p>
+<p>So why did our 100 tests pass?</p>
+<h1 id="starting-small">Starting small</h1>
+<p>For most types, QuickCheck operates from the handy assumption that "small" test cases are more useful than big ones.</p>
+<p>As tests pass for small random inputs, it generates "bigger" ones.</p>
+<p>With just 100 tests, we are simply not likely to generate a code point that encodes as two code units.</p>
+<h1 id="behind-the-scenes-generating-values">Behind the scenes: generating values</h1>
+<p>How does QuickCheck do its thing, anyway?</p>
+<p>It needs to be able to generate random values.</p>
+<p>This it achieves via typeclasses.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- Generator type.</span>
+<span class="kw">data</span> <span class="dt">Gen</span> a
+
+<span class="co">-- The set of types for which we</span>
+<span class="co">-- can produce random values.</span>
+<span class="kw">class</span> <span class="dt">Arbitrary</span> a <span class="kw">where</span>
+<span class="ot">    arbitrary ::</span> <span class="dt">Gen</span> a</code></pre>
+<h1 id="behind-the-scenes-some-machinery">Behind the scenes: some machinery</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- Generate a random value within a range.</span>
+<span class="ot">choose ::</span> <span class="dt">Random</span> a <span class="ot">=&gt;</span> (a,a) <span class="ot">-&gt;</span> <span class="dt">Gen</span> a
+<span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">Bool</span> <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> choose (<span class="dt">False</span>,<span class="dt">True</span>)
+
+<span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">Char</span> <span class="co">{- ... -}</span></code></pre>
+<h1 id="behind-the-scenes-testable-things">Behind the scenes: testable things</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- Simply protection for a Gen.</span>
+<span class="kw">data</span> <span class="dt">Property</span> <span class="fu">=</span> <span class="dt">MkProperty</span> (<span class="dt">Gen</span> a)
+
+<span class="co">-- The set of types that can be tested.</span>
+<span class="kw">class</span> <span class="dt">Testable</span> prop
+
+<span class="co">-- The instance bodies are not interesting.</span>
+<span class="kw">instance</span> <span class="dt">Testable</span> <span class="dt">Bool</span>
+
+<span class="kw">instance</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a, <span class="dt">Testable</span> prop)
+    <span class="ot">=&gt;</span> <span class="dt">Testable</span> (a <span class="ot">-&gt;</span> prop)</code></pre>
+<p>The two instances above are crucial.</p>
+<h1 id="how-does-this-work">How does this work?</h1>
+<p>Let's write our test function with a type signature.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">prop_encodeOne ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+prop_encodeOne c <span class="fu">=</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<p>And <code>quickCheck</code>:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">quickCheck ::</span> <span class="dt">Testable</span> prop <span class="ot">=&gt;</span> prop <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</code></pre>
+<h1 id="look-again">Look again</h1>
+<p>If <code>quickCheck</code> accepts <code>prop_encodeOne</code>, then the latter must be an instance of <code>Testable</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">prop_encodeOne ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+
+<span class="ot">quickCheck ::</span> <span class="dt">Testable</span> prop <span class="ot">=&gt;</span> prop <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</code></pre>
+<p>But how? Via these two instances.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- Satisfied by the result type</span>
+<span class="kw">instance</span> <span class="dt">Testable</span> <span class="dt">Bool</span>
+
+<span class="co">-- Satisfied by the argument and result</span>
+<span class="kw">instance</span> (<span class="dt">Arbitrary</span> a, <span class="dt">Show</span> a, <span class="dt">Testable</span> prop)
+    <span class="ot">=&gt;</span> <span class="dt">Testable</span> (a <span class="ot">-&gt;</span> prop)</code></pre>
+<h1 id="long-story-short">Long story short</h1>
+<p>If we pass <code>quickCheck</code> a function, then:</p>
+<ul>
+<li><p>provided its arguments are all instances of <code>Arbitrary</code> and <code>Show</code></p></li>
+<li><p><em>and</em> provided its result is an instance of <code>Testable</code></p></li>
+</ul>
+<p><em>then</em> <code>quickCheck</code> can:</p>
+<ul>
+<li><p><em>generate</em> arbitrary values of <em>all</em> necessary types automatically,</p></li>
+<li><p>run our test on those values,</p></li>
+<li><p>and ensure that our test always passes</p></li>
+</ul>
+<h1 id="so-what">So what?</h1>
+<p>We still have a broken test!</p>
+<p><code>quickCheck</code> tells us that it always passes---when it shouldn't!</p>
+<p>Why? We have to read the source.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">Test.QuickCheck.Arbitrary</span> <span class="kw">where</span>
+
+<span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">Char</span> <span class="kw">where</span>
+  arbitrary <span class="fu">=</span> chr <span class="ot">`fmap`</span> oneof [choose (<span class="dv">0</span>,<span class="dv">127</span>),
+                                choose (<span class="dv">0</span>,<span class="dv">255</span>)]</code></pre>
+<p>Oh great, QuickCheck will only generate 8-bit characters.</p>
+<p>Our assumption that it would eventually generate big-enough inputs was wrong for <code>Char</code>.</p>
+<p>Therefore our test can never fail.</p>
+<p>How...unfortunate!</p>
+<h1 id="writing-a-new-arbitrary-instance">Writing a new Arbitrary instance</h1>
+<p>So now we face a challenge.</p>
+<p>We want a type that is almost exactly like <code>Char</code>, but that has a different <code>Arbitrary</code> instance.</p>
+<p>To create such a type, we use the <code>newtype</code> keyword.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">BigChar</span> <span class="fu">=</span> <span class="dt">Big</span> <span class="dt">Char</span>
+                <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>)</code></pre>
+<p>The type is named <code>BigChar</code>; its constructor is named <code>Big</code>.</p>
+<p>We use <code>deriving</code> to reuse the <code>Eq</code> instance of the underlying <code>Char</code> type, and to generate a new <code>Show</code> instance.</p>
+<h1 id="what-next">What next?</h1>
+<p>We want to be able to flesh this out:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">BigChar</span> <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> <span class="co">{- ... what? ... -}</span></code></pre>
+<p>The highest Unicode code point is 0x10FFFF.</p>
+<p>We want to generate values in this range.</p>
+<p>We saw this earlier:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- Generate a random value within a range.</span>
+<span class="ot">choose ::</span> <span class="dt">Random</span> a <span class="ot">=&gt;</span> (a,a) <span class="ot">-&gt;</span> <span class="dt">Gen</span> a</code></pre>
+<h1 id="random-values-the-hard-way">Random values: the hard way</h1>
+<p>In order to use <code>choose</code>, we must make <code>BigChar</code> an instance of <code>Random</code>.</p>
+<p>Here's a verbose way to do it:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Control.Arrow</span> (first)
+<span class="kw">import </span><span class="dt">System.Random</span>
+
+<span class="kw">instance</span> <span class="dt">Random</span> <span class="dt">BigChar</span> <span class="kw">where</span>
+  random                <span class="fu">=</span> first <span class="dt">Big</span> <span class="ot">`fmap`</span> random
+  randomR (<span class="dt">Big</span> a,<span class="dt">Big</span> b) <span class="fu">=</span> first <span class="dt">Big</span> <span class="ot">`fmap`</span> randomR (a,b)</code></pre>
+<h1 id="random-values-easier">Random values: easier</h1>
+<p>If we want to avoid the boilerplate code from the previous slide, we can use a trick:</p>
+<ul>
+<li><p>The <code>GeneralizedNewtypeDeriving</code> language extension</p></li>
+<li><p>This lets GHC automatically derive some non-standard typeclass instances for us, e.g. <code>Random</code></p></li>
+</ul>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span>
+<span class="kw">import </span><span class="dt">System.Random</span>
+
+<span class="kw">newtype</span> <span class="dt">BigChar</span> <span class="fu">=</span> <span class="dt">Big</span> <span class="dt">Char</span>
+                <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>, <span class="dt">Random</span>)</code></pre>
+<ul>
+<li><p>All we did was add <code>Random</code> to the <code>deriving</code> clause above.</p></li>
+<li><p>As the name suggests, this only works with the <code>newtype</code> keyword.</p></li>
+</ul>
+<h1 id="our-instance-and-a-rerun">Our instance, and a rerun</h1>
+<p>An instance with a body:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">BigChar</span> <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> choose (<span class="dt">Big</span> <span class="ch">'0'</span>,<span class="dt">Big</span> <span class="ch">'\x10FFFF'</span>)</code></pre>
+<p>A new test that unwraps a <code>BigChar</code> value:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">prop_encodeOne3 (<span class="dt">Big</span> c) <span class="fu">=</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<p>And let's try it:</p>
+<pre><code>ghci&gt; quickCheck prop_encodeOne3
+*** Failed! Falsifiable (after 1 test):
+Big '\317537'</code></pre>
+<p>Great! Not only did our broken test fail immediately...</p>
+<p>...but it gave us a <em>counterexample</em>, an input on which our test function reproducibly fails!</p>
+<h1 id="the-magic-of-quickcheck">The magic of QuickCheck</h1>
+<p>The beauty here is several-fold:</p>
+<ul>
+<li><p>We write a simple Haskell function that accepts some inputs and returns a <code>Bool</code></p></li>
+<li><p>QuickCheck generates random test cases for us, and tests our function</p></li>
+<li><p>If a test case fails, it tells us what the inputs were</p></li>
+</ul>
+<h1 id="so-what-1">So what?</h1>
+<p>Unit test way:</p>
+<ul>
+<li>A pile of unit tests that are small variations on a theme</li>
+</ul>
+<p>QuickCheck way:</p>
+<ul>
+<li><p>One property that you expect to hold universally true</p></li>
+<li><p>Automatically, randomly generated test inputs</p></li>
+<li><p>Counterexamples that help you pinpoint your bugs</p></li>
+</ul>
+<h1 id="what-else">What else?</h1>
+<p>There's a problem with random inputs when a test fails:</p>
+<ul>
+<li><p>They're often <em>big</em>.</p></li>
+<li><p>Big things are difficult for humans to deal with.</p></li>
+<li><p>Big values usually take longer to look through.</p></li>
+</ul>
+<p>Starting from a random failing input:</p>
+<ul>
+<li>We'd like to find the <em>smallest</em> input that will cause a test to fail.</li>
+</ul>
+<p>QuickCheck calls this <em>shrinking</em>.</p>
+<h1 id="micro-lab-shrink-a-bigchar">Micro-lab: shrink a BigChar</h1>
+<p>Grab the following source file:</p>
+<pre><code>curl -O http://cs240h.cs.stanford.edu/ShrinkChar.hs</code></pre>
+<p>Using <code>ghci</code> to do some spelunking, work out a body for <code>shrinkChar</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Arbitrary</span> <span class="dt">BigChar</span> <span class="kw">where</span>
+  arbitrary      <span class="fu">=</span> choose (<span class="dt">Big</span> <span class="ch">'0'</span>,<span class="dt">Big</span> <span class="ch">'\x10FFFF'</span>)
+  shrink (<span class="dt">Big</span> c) <span class="fu">=</span> map <span class="dt">Big</span> (shrinkChar c)
+
+<span class="co">-- Write a body for this.</span>
+shrinkChar c <span class="fu">=</span> undefined</code></pre>
+<p>You have 5 minutes.</p>
+<h1 id="generating-vs-filtering-values">Generating vs filtering values</h1>
+<p>Here are two different approaches to generating test values.</p>
+<p>First, generate them directly (look at line 2):</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">prop_encodeOne2 <span class="fu">=</span> <span class="kw">do</span>
+  c <span class="ot">&lt;-</span> choose (<span class="ch">'\0'</span>, <span class="ch">'\xFFFF'</span>)
+  return <span class="fu">$</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<p>Second, generate any old value, but <em>filter</em> such that we get only the ones that make sense:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">-- These two are basically the same, modulo verbosity.</span>
+
+prop_encodeOne4 (<span class="dt">Big</span> c) <span class="fu">=</span>
+  (c <span class="fu">&lt;</span> <span class="ch">'\x10000'</span>) <span class="fu">==&gt;</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span>
+
+prop_encodeOne5 <span class="fu">=</span> <span class="kw">do</span>
+  <span class="dt">Big</span> c <span class="ot">&lt;-</span> arbitrary <span class="ot">`suchThat`</span> (<span class="fu">&lt;</span> <span class="dt">Big</span> <span class="ch">'\x10000'</span>)
+  return <span class="fu">$</span> length (encodeChar c) <span class="fu">==</span> <span class="dv">1</span></code></pre>
+<h1 id="generating-vs-filtering">Generating vs filtering</h1>
+<p>It is <em>usually</em> more efficient to generate only the values you'll need, and do no filtering.</p>
+<p>Sometimes, it's easier to identify good values when you see them (by filtering) than to figure out how to generate them.</p>
+<p>If QuickCheck has to generate too many values that fail a <code>suchThat</code> or other filter, it will give up and may not run as many tests as you want.</p>
+<ul>
+<li>For both efficiency <em>and</em> to ensure that QuickCheck can generate enough values to test, it's worth trying to generate only good values.</li>
+</ul>
+<h1 id="mini-lab-more-code">Mini-lab: more code!</h1>
+<p>Grab the following source code:</p>
+<pre><code>curl -O http://cs240h.cs.stanford.edu/Utf16.hs</code></pre>
+<p>Write a definition for <code>decodeUtf16</code>:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">decodeUtf16 ::</span> [<span class="dt">Word16</span>] <span class="ot">-&gt;</span> [<span class="dt">Char</span>]</code></pre>
+<p>Decide on some QuickCheck tests, write them, and run them.</p>
+<p>You have 15 minutes.</p>
+<h1 id="sizing-a-test">Sizing a test</h1>
+<p>Test data generators have an implicit size parameter, hidden inside the <code>Gen</code> type.</p>
+<p>QuickCheck starts by generating small test cases; it increases the size as testing progresses.</p>
+<p>The meaning of "size" is specific to the needs of an <code>Arbitrary</code> instance.</p>
+<ul>
+<li>The <code>Arbitrary</code> instance for lists interprets it as "the maximum length of a list of arbitrary values".</li>
+</ul>
+<p>We can find the current size using the <code>sized</code> function, and modify it locally using <code>resize</code>:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">sized  ::</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a) <span class="ot">-&gt;</span> <span class="dt">Gen</span> a
+<span class="ot">resize ::</span>  <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> a  <span class="ot">-&gt;</span> <span class="dt">Gen</span> a</code></pre>
+<h1 id="lifting">Lifting</h1>
+<p>We're hopefully by now familiar with the <code>Functor</code> class:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Functor</span> f  <span class="kw">where</span>
+<span class="ot">    fmap ::</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f b</code></pre>
+<p>This takes a pure function and "lifts" it into the functor <code>f</code>.</p>
+<p>In general, "lifting" takes a concept and transforms it to work in a different (sometimes more general) setting.</p>
+<p>For instance, we can define lifting of functions with the <code>Monad</code> class too:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">liftM ::</span> (<span class="dt">Monad</span> m) <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b
+liftM f action <span class="fu">=</span> <span class="kw">do</span>
+  b <span class="ot">&lt;-</span> action
+  return (f b)</code></pre>
+<h1 id="fmap-and-liftm">fmap and liftM</h1>
+<p>Notice the similarities between the type signatures:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">fmap<span class="ot">  ::</span> (<span class="dt">Functor</span> f) <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f b
+<span class="ot">liftM ::</span> (<span class="dt">Monad</span> m)   <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b</code></pre>
+<p>All instances of <code>Monad</code> can possibly be instances of <code>Functor</code>. Ideally, they'd be defined in terms of each other:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> (<span class="dt">Functor</span> m) <span class="ot">=&gt;</span> <span class="dt">Monad</span> m <span class="kw">where</span>
+    <span class="co">{- blah blah -}</span></code></pre>
+<p>For historical reasons, the two classes are separate, so we write separate instances for them and just reuse the code:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">MyThingy</span> <span class="kw">where</span>
+    <span class="co">{- whatever -}</span>
+
+<span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">MyThingy</span> <span class="kw">where</span>
+    fmap <span class="fu">=</span> liftM</code></pre>
+<h1 id="why-the-apparent-digression">Why the apparent digression?</h1>
+<p>It turns out that lifting pure functions into monads is really common.</p>
+<p>So common, in fact, that <code>Control.Monad</code> defines a bunch of extra combinators for us.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">liftM2 ::</span> (<span class="dt">Monad</span> m) <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> c) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b <span class="ot">-&gt;</span> m b
+liftM2 f act1 act2 <span class="fu">=</span> <span class="kw">do</span>
+  a <span class="ot">&lt;-</span> act1
+  b <span class="ot">&lt;-</span> act2
+  return (f a b)</code></pre>
+<p>These combinators go all the way up to <code>liftM5</code>.</p>
+<p>Look familiar? Useful?</p>
+<h1 id="a-tighter-arbitrary-instance">A tighter Arbitrary instance</h1>
+<p>Before:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Point</span> a <span class="fu">=</span> <span class="dt">Point</span> a a
+
+<span class="kw">instance</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Arbitrary</span> (<span class="dt">Point</span> a) <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> <span class="kw">do</span>
+      x <span class="ot">&lt;-</span> arbitrary
+      y <span class="ot">&lt;-</span> arbitrary
+      return (<span class="dt">Point</span> x y)</code></pre>
+<p>After:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Control.Monad</span> (liftM2)
+
+<span class="kw">instance</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Arbitrary</span> (<span class="dt">Point</span> a) <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> liftM2 <span class="dt">Point</span> arbitrary arbitrary</code></pre>
+<h1 id="micro-lab-shrinking-a-point">Micro-lab: shrinking a Point</h1>
+<p>QuickCheck provides us with machinery to shrink tuples.</p>
+<p>Make use of this machinery to shrink a <code>Point</code>.</p>
+<pre><code>curl -O http://cs240h.cs.stanford.edu/TestPoint.hs</code></pre>
+<p>Take 3 minutes.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Control.Monad</span>
+<span class="kw">import </span><span class="dt">Test.QuickCheck</span>
+
+<span class="kw">data</span> <span class="dt">Point</span> a <span class="fu">=</span> <span class="dt">Point</span> a a
+               <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Show</span>)
+
+<span class="kw">instance</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Arbitrary</span> (<span class="dt">Point</span> a) <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> liftM2 <span class="dt">Point</span> arbitrary arbitrary
+    <span class="co">-- TODO: provide a body for shrink</span>
+    shrink <span class="fu">=</span> undefined</code></pre>
+<h1 id="testing-a-recursive-data-type">Testing a recursive data type</h1>
+<p>Suppose we have a tree type:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Tree</span> a <span class="fu">=</span> <span class="dt">Node</span> (<span class="dt">Tree</span> a) (<span class="dt">Tree</span> a)
+            <span class="fu">|</span> <span class="dt">Leaf</span> a
+              <span class="kw">deriving</span> (<span class="dt">Show</span>)</code></pre>
+<p>Here's an obvious <code>Arbitrary</code> instance:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Arbitrary</span> (<span class="dt">Tree</span> a) <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> oneof [
+                  liftM  <span class="dt">Leaf</span> arbitrary
+                , liftM2 <span class="dt">Node</span> arbitrary arbitrary
+                ]</code></pre>
+<p>The <code>oneof</code> combinator chooses a generator at random.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">oneof ::</span> [<span class="dt">Gen</span> a] <span class="ot">-&gt;</span> <span class="dt">Gen</span> a</code></pre>
+<h1 id="whats-up-doc">What's up, Doc?</h1>
+<p>Potential trouble:</p>
+<ul>
+<li><p>This generator may not terminate at all!</p></li>
+<li><p>It's likely to produce <em>huge</em> trees.</p></li>
+</ul>
+<p>We can use the <code>sample</code> function to generate and print some arbitrary data.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">sample ::</span> (<span class="dt">Show</span> a) <span class="ot">=&gt;</span> <span class="dt">Gen</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</code></pre>
+<p>This helps us to explore what's going on.</p>
+<h1 id="a-safer-instance">A safer instance</h1>
+<p>Here's where the sizing mechanism comes to the rescue.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Arbitrary</span> (<span class="dt">Tree</span> a) <span class="kw">where</span>
+    arbitrary <span class="fu">=</span> sized tree
+
+<span class="ot">tree ::</span> (<span class="dt">Arbitrary</span> a) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Gen</span> (<span class="dt">Tree</span> a)
+tree <span class="dv">0</span> <span class="fu">=</span> liftM <span class="dt">Leaf</span> arbitrary
+tree n <span class="fu">=</span> oneof [
+           liftM  <span class="dt">Leaf</span> arbitrary
+         , liftM2 <span class="dt">Node</span> subtree subtree
+         ]
+  <span class="kw">where</span> subtree <span class="fu">=</span> tree (n <span class="ot">`div`</span> <span class="dv">2</span>)</code></pre>
+<h1 id="where-all-this-is-going">Where all this is going</h1>
+<p>QuickCheck is pretty great. Take the time to learn to use it.</p>
+<p>It's a little harder to learn to use it well than unit tests, but it pays off big time.</p>
+<p>Furthermore:</p>
+<ul>
+<li>We really want to see you provide QuickCheck tests with future labs and your final projects.</li>
+</ul>
+<p>Enjoy!</p>
+
+
+</body></html>

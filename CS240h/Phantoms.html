@@ -1,0 +1,555 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0060)http://www.scs.stanford.edu/14sp-cs240h/slides/phantoms.html -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta name="generator" content="pandoc">
+  <title>Phantoms</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Phantoms</h1>
+</div>
+<p>Let's think about a programming pattern we've seen, but not paid attention to.</p>
+<h1 id="patterns-i">Patterns: I</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dv">0</span></code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dv">0</span> <span class="fu">+</span> n  <span class="fu">==</span>  n
+n <span class="fu">+</span> <span class="dv">0</span>  <span class="fu">==</span>  n</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">(a <span class="fu">+</span> b) <span class="fu">+</span> c  <span class="fu">==</span>  a <span class="fu">+</span> (b <span class="fu">+</span> c)</code></pre>
+<h1 id="patterns-ii">Patterns: II</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dv">1</span></code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dv">1</span> <span class="fu">*</span> n  <span class="fu">==</span>  n
+n <span class="fu">*</span> <span class="dv">1</span>  <span class="fu">==</span>  n</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">(a <span class="fu">*</span> b) <span class="fu">*</span> c  <span class="fu">==</span>  a <span class="fu">*</span> (b <span class="fu">*</span> c)</code></pre>
+<h1 id="patterns-iii">Patterns: III</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">[]</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">[] <span class="fu">++</span> n  <span class="fu">==</span>  n
+n <span class="fu">++</span> []  <span class="fu">==</span>  n</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">(a <span class="fu">++</span> b) <span class="fu">++</span> c  <span class="fu">==</span>  a <span class="fu">++</span> (b <span class="fu">++</span> c)</code></pre>
+<h1 id="patterns-iv">Patterns: IV</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">True</span></code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">True</span> <span class="fu">&amp;&amp;</span> n  <span class="fu">==</span>  n
+n <span class="fu">&amp;&amp;</span> <span class="dt">True</span>  <span class="fu">==</span>  n</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">(a <span class="fu">&amp;&amp;</span> b) <span class="fu">&amp;&amp;</span> c <span class="fu">==</span> a <span class="fu">&amp;&amp;</span> (b <span class="fu">&amp;&amp;</span> c)</code></pre>
+<h1 id="patterns-abstracted">Patterns, abstracted</h1>
+<p>Typeclass:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Monoid</span> a <span class="kw">where</span>
+    <span class="co">-- A "zero element"</span>
+<span class="ot">    mempty  ::</span> a
+    <span class="co">-- An associative operation</span>
+<span class="ot">    mappend ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</code></pre>
+<p>Where can you find this typeclass?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Monoid</span></code></pre>
+<h1 id="monoids">Monoids</h1>
+<p>Instances of <code>Monoid</code> must obey some rules.</p>
+<p>Rule 1: identity element</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">mempty <span class="ot">`mappend`</span> n  <span class="fu">==</span>  n
+n <span class="ot">`mappend`</span> mempty  <span class="fu">==</span>  n</code></pre>
+<p>Rule 2: our associative operation <em>must actually associate</em>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">(a <span class="ot">`mappend`</span> b) <span class="ot">`mappend`</span> c  <span class="fu">==</span>
+a <span class="ot">`mappend`</span> (b <span class="ot">`mappend`</span> c)</code></pre>
+<h1 id="rules">Rules?</h1>
+<p>Monoids come from abstract algebra.</p>
+<p>In abstract algebra, rules that must be true are called <em>axioms</em>.</p>
+<p>Also called <em>laws</em>.</p>
+<p>In Haskell, how are these rules/axioms/laws enforced?</p>
+<ul>
+<li>They are not.</li>
+</ul>
+<h1 id="monoids-for-lists">Monoids for lists</h1>
+<p>Here's the easiest and most familiar-to-Haskellers case:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> [a] <span class="kw">where</span>
+     mempty           <span class="fu">=</span> []
+     xs <span class="ot">`mappend`</span> ys  <span class="fu">=</span> xs <span class="fu">++</span> ys</code></pre>
+<p>Pop quiz:</p>
+<ul>
+<li><p>What other definition(s) would follow the <code>Monoid</code> laws?</p></li>
+<li><p>Do they make any sense?</p></li>
+</ul>
+<h1 id="monoids-for-numbers">Monoids for numbers?</h1>
+<p>Numbers are an interesting case.</p>
+<p>Addition as monoid:</p>
+<ul>
+<li><p>Identity <code>0</code></p></li>
+<li><p>Associative operator <code>+</code></p></li>
+</ul>
+<p>Multiplication as monoid:</p>
+<ul>
+<li><p>Identity <code>1</code></p></li>
+<li><p>Associative operator <code>*</code></p></li>
+</ul>
+<h1 id="when-do-we-use-typeclasses">When do we use typeclasses?</h1>
+<p>Suppose you want to abstract a code pattern into a typeclass.</p>
+<p>Under what circumstances is this likely to work best?</p>
+<ul>
+<li>When there is <em>just one</em> "canonical" behaviour you expect for a given type.</li>
+</ul>
+<p>For lists, our <code>Monoid</code> instance <em>is</em> canonical:</p>
+<ul>
+<li>Any other behaviour that follows the laws is just <em>weird</em>.</li>
+</ul>
+<p>For numbers, we have two sensible behaviours:</p>
+<ul>
+<li>No one <code>Monoid</code> instance can be called canonical!</li>
+</ul>
+<h1 id="monoids-for-multiplication">Monoids for multiplication</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">Product</span> a <span class="fu">=</span> <span class="dt">Product</span> {<span class="ot"> getProduct ::</span> a }
+    <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Ord</span>, <span class="dt">Read</span>, <span class="dt">Show</span>, <span class="dt">Bounded</span>)
+
+<span class="kw">instance</span> <span class="dt">Num</span> a <span class="ot">=&gt;</span> <span class="dt">Monoid</span> (<span class="dt">Product</span> a) <span class="kw">where</span>
+    mempty                        <span class="fu">=</span> <span class="dt">Product</span> <span class="dv">1</span>
+
+    <span class="dt">Product</span> x <span class="ot">`mappend`</span> <span class="dt">Product</span> y <span class="fu">=</span> <span class="dt">Product</span> (x <span class="fu">*</span> y)</code></pre>
+<h1 id="monoids-for-addition">Monoids for addition</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">Sum</span> a <span class="fu">=</span> <span class="dt">Sum</span> {<span class="ot"> getSum ::</span> a }
+    <span class="kw">deriving</span> (<span class="dt">Eq</span>, <span class="dt">Ord</span>, <span class="dt">Read</span>, <span class="dt">Show</span>, <span class="dt">Bounded</span>)
+
+<span class="kw">instance</span> <span class="dt">Num</span> a <span class="ot">=&gt;</span> <span class="dt">Monoid</span> (<span class="dt">Sum</span> a) <span class="kw">where</span>
+    mempty                <span class="fu">=</span> <span class="dt">Sum</span> <span class="dv">0</span>
+
+    <span class="dt">Sum</span> x <span class="ot">`mappend`</span> <span class="dt">Sum</span> y <span class="fu">=</span> <span class="dt">Sum</span> (x <span class="fu">+</span> y)</code></pre>
+<h1 id="the-either-type">The <code>Either</code> type</h1>
+<p>There exists a built-in type named <code>Either</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Either</span> a b <span class="fu">=</span> <span class="dt">Left</span> a <span class="fu">|</span> <span class="dt">Right</span> b</code></pre>
+<p>By convention:</p>
+<ul>
+<li><p><code>Left</code> means "something went wrong"</p></li>
+<li><p><code>Right</code> means "result was a success"</p></li>
+</ul>
+<p>Often used as follows:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Result</span> a <span class="fu">=</span> <span class="dt">Either</span> <span class="dt">String</span> a</code></pre>
+<p>(where the <code>String</code> carries an error message)</p>
+<h1 id="coding-exercise">Coding exercise</h1>
+<p>Create a <code>Monoid</code> instance that will give the <em>first success</em> from a chain of <code>Either</code> values.</p>
+<p>Desired behaviour:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">Left</span> <span class="st">"you goofed"</span> <span class="ot">`mappend`</span>
+<span class="dt">Left</span> <span class="st">"i win!"</span>     <span class="ot">`mappend`</span>
+<span class="dt">Right</span> <span class="st">"rats! you won!"</span>
+
+   <span class="fu">==</span>
+
+<span class="dt">Right</span> <span class="st">"rats! you won!"</span></code></pre>
+<p>You have five minutes.</p>
+<h1 id="ambient-machinery-for-the-coding-exercise">Ambient machinery for the coding exercise</h1>
+<p>If you import <code>Data.Monoid</code> you will have the following definitions available:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Monoid</span> a <span class="kw">where</span>
+<span class="ot">  mempty ::</span> a
+<span class="ot">  mappend ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a
+
+<span class="kw">data</span> <span class="dt">Either</span> a b <span class="fu">=</span> <span class="dt">Left</span> a <span class="fu">|</span> <span class="dt">Right</span> b</code></pre>
+<h1 id="language-hitch">Language hitch</h1>
+<p>Did you try to write code like this?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Either</span> a b) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">Left</span> <span class="co">{- what ??? -}</span>
+
+    <span class="dt">Right</span> a <span class="ot">`mappend`</span> _ <span class="fu">=</span> <span class="dt">Right</span> a
+    _       <span class="ot">`mappend`</span> b <span class="fu">=</span> b</code></pre>
+<p>You surely ran into trouble while trying to define <code>mempty</code>.</p>
+<p>Why?</p>
+<h1 id="type-quantification">Type quantification</h1>
+<p>In Haskell, type variables are <em>quantified</em>.</p>
+<p>They stand in for all types in a given domain.</p>
+<p>If there's no typeclass mentioned, a type variable is implicitly <em>universally</em> quantified.</p>
+<p>We can write these quantifiers explicitly:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">length<span class="ot"> ::</span> forall a<span class="fu">.</span> [a] <span class="ot">-&gt;</span> <span class="dt">Int</span></code></pre>
+<p>"The <code>length</code> function must accept any list, no matter what type of data it contains."</p>
+<h1 id="universal-quantification">Universal quantification</h1>
+<p>Why is universal quantification relevant here?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Either</span> a b) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">Left</span> <span class="co">{- what ??? -}</span></code></pre>
+<h1 id="universal-quantification-1">Universal quantification</h1>
+<p>Why is universal quantification relevant here?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Either</span> a b) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">Left</span> <span class="co">{- what ??? -}</span></code></pre>
+<p>Since <code>mempty</code> gives a "zero element", it must somehow produce a zero element for the type <code>a</code>.</p>
+<p>But since <code>a</code> is universally quantified, it stands in for <em>every type</em>.</p>
+<p>Clearly there is no one legal value that is of every type.</p>
+<p>It is impossible to write a sensible instance.</p>
+<h1 id="a-possible-fix">A possible fix</h1>
+<p>This won't typecheck either:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Either</span> <span class="dt">String</span> a) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">Left</span> <span class="st">"fnord"</span>
+
+    <span class="dt">Right</span> a <span class="ot">`mappend`</span> _ <span class="fu">=</span> <span class="dt">Right</span> a
+    _       <span class="ot">`mappend`</span> b <span class="fu">=</span> b</code></pre>
+<p>However, we can make it compile by adding the following to the top of our source file:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span></code></pre>
+<h1 id="pragmas">Pragmas</h1>
+<p>This is a specially formatted comment:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="co">{- i am a normal comment -}</span>
+
+<span class="ot">{-# i am a special comment #-}</span></code></pre>
+<p>"Special" comments usually contain directives ("pragmas") that change the compiler's behaviour.</p>
+<p>The <code>LANGUAGE</code> pragma enables non-standard language features.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span></code></pre>
+<p><code>FlexibleInstances</code> makes the compiler consider <a href="http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#instance-rules">more typeclass instances as legal</a> than the Haskell 98 standard allows.</p>
+<h1 id="more-about-pragmas">More about pragmas</h1>
+<p>You'll see a few more pragmas as we progress.</p>
+<p>Some are widely used, others are not.</p>
+<p>Some are safe, others are not...</p>
+<ul>
+<li>up to and including allowing the typechecker to go into an infinite loop! (<code>UndecidableInstances</code>)</li>
+</ul>
+<p><code>FlexibleInstances</code> is widely used and often safe.</p>
+<h1 id="back-to-our-fix">Back to our fix</h1>
+<p>This <em>will</em> typecheck:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span>
+
+<span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Either</span> <span class="dt">String</span> a) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">Left</span> <span class="st">"fnord"</span>
+
+    <span class="dt">Right</span> a <span class="ot">`mappend`</span> _ <span class="fu">=</span> <span class="dt">Right</span> a
+    _       <span class="ot">`mappend`</span> b <span class="fu">=</span> b</code></pre>
+<p>But is it canonical?</p>
+<h1 id="canonicality">Canonicality</h1>
+<p>Why worry about our <code>Monoid</code> instance being canonical?</p>
+<p>Any time you declare an instance of any typeclass:</p>
+<ul>
+<li><p>It is automatically made available to every module that imports your module.</p></li>
+<li><p>You can't say "I don't want to import instance <code>X</code>" :-(</p></li>
+</ul>
+<p>If you define a weird instance of a popular typeclass, you'll "infect" people who import your module.</p>
+<ul>
+<li>Make sure your instances make sense!</li>
+</ul>
+<h1 id="finally">Finally!</h1>
+<p>Via use of <code>newtype</code>, we don't accidentally associate a silly <code>Monoid</code> instance with <code>Either String a</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span>
+
+<span class="kw">import </span><span class="dt">Data.Monoid</span>
+
+<span class="kw">newtype</span> <span class="dt">FirstRight</span> a b <span class="fu">=</span> <span class="dt">FirstRight</span> {
+<span class="ot">    getFirstRight ::</span> <span class="dt">Either</span> a b
+  }
+
+<span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">FirstRight</span> <span class="dt">String</span> a) <span class="kw">where</span>
+  mempty <span class="fu">=</span> <span class="dt">FirstRight</span> (<span class="dt">Left</span> <span class="st">"suxx0rz"</span>)
+
+  a<span class="fu">@</span>(<span class="dt">FirstRight</span> (<span class="dt">Right</span> _)) <span class="ot">`mappend`</span> _ <span class="fu">=</span> a
+  _                        <span class="ot">`mappend`</span> b <span class="fu">=</span> b</code></pre>
+<h1 id="http-post">HTTP POST</h1>
+<p>Let's upload some vitally important data to a server.</p>
+<pre><code>curl --data foo=bar --verbose \
+  http://httpbin.org/post</code></pre>
+<h1 id="multipart-form-upload">Multipart form upload</h1>
+<p>When we POST multipart data to a form (e.g. uploading a photo), some information is mandatory, while other stuff is optional.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Part</span> <span class="fu">=</span> <span class="dt">Part</span> {
+    <span class="co">-- name of the &lt;input&gt; tag this belongs to</span>
+<span class="ot">      name        ::</span> <span class="dt">String</span>
+    <span class="co">-- filename of file we're uploading</span>
+    ,<span class="ot"> fileName    ::</span> <span class="dt">Maybe</span> <span class="dt">FilePath</span>
+    <span class="co">-- type of file</span>
+    ,<span class="ot"> contentType ::</span> <span class="dt">Maybe</span> <span class="dt">ContentType</span>
+    <span class="co">-- file contents</span>
+    ,<span class="ot"> body        ::</span> <span class="dt">String</span>
+    } <span class="kw">deriving</span> (<span class="dt">Show</span>)</code></pre>
+<h1 id="uploading-data">Uploading data</h1>
+<p>Suppose we want to build a HTTP client that supports POST.</p>
+<p>Web pages tend to expect multipart form data, while REST APIs have different needs.</p>
+<p>Here are some types that let us represent a POST body.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Param</span> <span class="fu">=</span> (<span class="dt">String</span>, <span class="dt">String</span>)
+
+<span class="kw">type</span> <span class="dt">ContentType</span> <span class="fu">=</span> <span class="dt">String</span>
+
+<span class="kw">data</span> <span class="dt">Payload</span> <span class="fu">=</span> <span class="dt">NoPayload</span>
+             <span class="fu">|</span> <span class="dt">Raw</span> <span class="dt">ContentType</span> <span class="dt">String</span>
+             <span class="fu">|</span> <span class="dt">Params</span> [<span class="dt">Param</span>]
+             <span class="fu">|</span> <span class="dt">FormData</span> [<span class="dt">Part</span>]
+               <span class="kw">deriving</span> (<span class="dt">Show</span>)</code></pre>
+<p>Can you write a <code>Monoid</code> instance for <code>Payload</code>?</p>
+<p>Decide for yourself, then discuss with a partner for 2 minutes.</p>
+<h1 id="huh">Huh</h1>
+<p>This part is easy enough:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> <span class="dt">Payload</span> <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">NoPayload</span>
+
+    mappend <span class="dt">NoPayload</span> b <span class="fu">=</span> b
+    mappend a <span class="dt">NoPayload</span> <span class="fu">=</span> a
+
+    mappend (<span class="dt">Params</span> a) (<span class="dt">Params</span> b) <span class="fu">=</span> <span class="dt">Params</span> (a<span class="fu">++</span>b)
+
+    <span class="co">{- ... -}</span></code></pre>
+<p>What about the rest of <code>mappend</code>?</p>
+<h1 id="semantic-problems">Semantic problems</h1>
+<p>It is easy to see how we can glom together <code>Params</code> or <code>FormData</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Payload</span> <span class="fu">=</span> <span class="dt">NoPayload</span>
+             <span class="fu">|</span> <span class="dt">Raw</span> <span class="dt">ContentType</span> <span class="dt">String</span>
+             <span class="fu">|</span> <span class="dt">Params</span> [<span class="dt">Param</span>]
+             <span class="fu">|</span> <span class="dt">FormData</span> [<span class="dt">Part</span>]</code></pre>
+<p>However, mixing <code>Raw</code> with <code>Params</code>, or <code>Params</code> with <code>FormData</code>, is nonsensical.</p>
+<p>A straightforward <code>Monoid</code> instance will have to crash (!!!) if we try this.</p>
+<h1 id="handling-failure-badly">Handling failure (badly)</h1>
+<p>What if we use the <code>Maybe</code> type to represent a failed attempt to <code>mappend</code>?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span>
+
+<span class="co">-- I dropped the NoPayload constructor. Why?</span>
+<span class="kw">data</span> <span class="dt">Payload</span> <span class="fu">=</span> <span class="dt">Raw</span> <span class="dt">ContentType</span> <span class="dt">String</span>
+             <span class="fu">|</span> <span class="dt">Params</span> [<span class="dt">Param</span>]
+             <span class="fu">|</span> <span class="dt">FormData</span> [<span class="dt">Part</span>]
+               <span class="kw">deriving</span> (<span class="dt">Show</span>)
+
+<span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Maybe</span> <span class="dt">Payload</span>) <span class="kw">where</span>
+  mempty <span class="fu">=</span> <span class="dt">Nothing</span>
+
+  mappend <span class="dt">Nothing</span> b <span class="fu">=</span> b
+  mappend a <span class="dt">Nothing</span> <span class="fu">=</span> a
+
+  mappend (<span class="dt">Just</span> (<span class="dt">Params</span> a)) (<span class="dt">Just</span> (<span class="dt">Params</span> b))
+    <span class="fu">=</span> <span class="dt">Just</span> (<span class="dt">Params</span> (a<span class="fu">++</span>b))
+  mappend (<span class="dt">Just</span> (<span class="dt">FormData</span> a)) (<span class="dt">Just</span> (<span class="dt">FormData</span> b))
+    <span class="fu">=</span> <span class="dt">Just</span> (<span class="dt">FormData</span> (a<span class="fu">++</span>b))
+  mappend _ _ <span class="fu">=</span> <span class="dt">Nothing</span></code></pre>
+<h1 id="yay">Yay?</h1>
+<p>This compiles, but it has a conceptual problem.</p>
+<ul>
+<li>Every time we use <code>mappend</code>, we have to pattern-match the result to see if the <code>mappend</code> succeeded.</li>
+</ul>
+<p>In API design circles, this is called "crappy".</p>
+<p>But wait, it gets worse!</p>
+<h1 id="o-error-message-where-art-thou">O error message, where art thou?</h1>
+<p>Let me try this in <code>ghci</code>:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">Just</span> (<span class="dt">Params</span> []) <span class="ot">`mappend`</span> <span class="dt">Just</span> (<span class="dt">Params</span> [])</code></pre>
+<h1 id="overlapping-instances">Overlapping instances</h1>
+<p>Remember <code>FlexibleInstances</code>?</p>
+<p>It allowed us to write a <code>Monoid</code> instance for the type <code>Maybe Payload</code>.</p>
+<p>Trouble is, <code>Data.Monoid</code> already defined an instance for <code>Maybe a</code>.</p>
+<p><code>FlexibleInstances</code> allows these two <em>definitions</em> to coexist happily.</p>
+<p>But when we want to <em>use</em> an instance, GHC doesn't know which one to use!</p>
+<h1 id="overlapping-instances-1">Overlapping instances</h1>
+<p>Enter the <code>OverlappingInstances</code> pragma:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE FlexibleInstances, OverlappingInstances #-}</span></code></pre>
+<p>This allows multiple instances to coexist <em>and</em> be used.</p>
+<p>The most specific instance that is visible will be used.</p>
+<p>A very handy extension!</p>
+<ul>
+<li>Also a big semantic gun pointing at your foot.</li>
+</ul>
+<h1 id="problems-with-overlapping-instances">Problems with overlapping instances</h1>
+<p>Why worry about <code>OverlappingInstances</code>?</p>
+<ul>
+<li><p>Makes it very easy for incorrect programs to still typecheck.</p></li>
+<li><p>Can cause confusing error messages.</p></li>
+<li><p>A program that typechecks can have its meaning changed by adding an instance declaration in some remote module.</p></li>
+</ul>
+<p>On the plus side, you can <a href="http://web.cecs.pdx.edu/~jgmorris/pubs/morris-icfp2010-instances.pdf">publish papers about their problems</a>, so they're not bad for an academic career.</p>
+<h1 id="checking-in">Checking in</h1>
+<p>We have a <code>Monoid</code> instance that:</p>
+<ul>
+<li><p>Has a janky API</p></li>
+<li><p>Uses a dodgy language extension</p></li>
+</ul>
+<p>Can we do better?</p>
+<h1 id="phantom-types">Phantom types</h1>
+<p>Let's add a type parameter on the left hand side of our <code>Payload</code> type.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Payload</span> a <span class="fu">=</span> <span class="dt">NoPayload</span>
+               <span class="fu">|</span> <span class="dt">Raw</span> <span class="dt">ContentType</span> <span class="dt">String</span>
+               <span class="fu">|</span> <span class="dt">Params</span> [<span class="dt">Param</span>]
+               <span class="fu">|</span> <span class="dt">FormData</span> [<span class="dt">Part</span>]
+               <span class="kw">deriving</span> (<span class="dt">Show</span>)</code></pre>
+<p>The type variable <code>a</code> <em>does not appear in the RHS</em>.</p>
+<p>We call this a <em>phantom type</em>.</p>
+<p>What's it for?</p>
+<h1 id="a-tiny-upload-api">A tiny upload API</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">param ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Payload</span> [<span class="dt">Param</span>]
+param name value <span class="fu">=</span> <span class="dt">Params</span> [(name, value)]</code></pre>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">filePart ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">FilePath</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Payload</span> [<span class="dt">Part</span>])
+filePart name path <span class="fu">=</span> <span class="kw">do</span>
+  body <span class="ot">&lt;-</span> readFile name
+  return (<span class="dt">FormData</span> [<span class="dt">Part</span> name (<span class="dt">Just</span> path) <span class="dt">Nothing</span> body])</code></pre>
+<h1 id="consider-the-types">Consider the types</h1>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">param ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">String</span>
+      <span class="ot">-&gt;</span> <span class="dt">Payload</span> [<span class="dt">Param</span>]
+
+<span class="ot">filePart ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">FilePath</span>
+         <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Payload</span> [<span class="dt">Part</span>])</code></pre>
+<p>Notice:</p>
+<ul>
+<li><p>The first function returns a <code>Payload [Param]</code></p></li>
+<li><p>The second returns a <code>Payload [Part]</code></p></li>
+</ul>
+<p>The phantom parameter makes these <em>distinct types</em>.</p>
+<ul>
+<li><p>The runtime representation is the same in each case.</p></li>
+<li><p>The compiler prevents us from mixing the two by accident.</p></li>
+</ul>
+<h1 id="code-moment">Code moment</h1>
+<p>Please write a body for <code>addParams</code> below.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monoid</span> (<span class="dt">Payload</span> [<span class="dt">Param</span>]) <span class="kw">where</span>
+    mempty <span class="fu">=</span> <span class="dt">NoPayload</span>
+    mappend <span class="fu">=</span> addParams</code></pre>
+<p>Download the code you'll need:</p>
+<pre><code>curl -L http://cs240h.scs.stanford.edu/PayloadPhantom.hs</code></pre>
+<p>You have five minutes.</p>
+<h1 id="making-this-all-work">Making this all work</h1>
+<p>We have a constrained public API for creating <code>Payload</code> values.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">param ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Payload</span> [<span class="dt">Param</span>]
+
+<span class="ot">filePart ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">FilePath</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Payload</span> [<span class="dt">Part</span>])
+
+<span class="ot">fileString ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">FilePath</span> <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> (<span class="dt">Payload</span> [<span class="dt">Part</span>])</code></pre>
+<p>How do we enforce this?</p>
+<p>We export the <em>name</em> of the type <code>Part</code>, but <em>not any of its constructors</em>.</p>
+<h1 id="exporting-a-type">Exporting a type</h1>
+<p>The <code>(..)</code> notation below means "export the type <code>Part</code> and all of its constructors".</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">PayloadPhantom</span>
+    (
+      <span class="dt">Part</span>(<span class="fu">..</span>)
+    <span class="co">{- ... trimmed out ... -}</span>
+    ) <span class="kw">where</span></code></pre>
+<h1 id="exporting-a-type-1">Exporting a type</h1>
+<p>The <code>(..)</code> notation below means "export the type <code>Part</code> and all of its constructors".</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">PayloadPhantom</span>
+    (
+      <span class="dt">Part</span>(<span class="fu">..</span>)
+    <span class="co">{- ... trimmed out ... -}</span>
+    ) <span class="kw">where</span></code></pre>
+<p>Notice that we omit the <code>(..)</code> below, meaning "export the type <code>Payload</code>, but <em>not any of its constructors</em>".</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">PayloadPhantom</span>
+    (
+      <span class="dt">Part</span>(<span class="fu">..</span>)
+    , <span class="dt">Payload</span> <span class="co">-- no constructors</span>
+    <span class="co">{- ... trimmed out ... -}</span>
+    ) <span class="kw">where</span></code></pre>
+<h1 id="exporting-a-type-2">Exporting a type</h1>
+<p>The <code>(..)</code> notation below means "export the type <code>Part</code> and all of its constructors".</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">PayloadPhantom</span>
+    (
+      <span class="dt">Part</span>(<span class="fu">..</span>)
+    <span class="co">{- ... trimmed out ... -}</span>
+    ) <span class="kw">where</span></code></pre>
+<p>So we export the <code>Payload</code> type, and <em>only</em> the functions that we defined and control ("smart constructors") that construct values of this type.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">PayloadPhantom</span>
+    (
+      <span class="dt">Part</span>(<span class="fu">..</span>)
+    , <span class="dt">Payload</span> <span class="co">-- no constructors</span>
+    , param
+    , filePart
+    , fileString
+    <span class="co">{- ... trimmed out ... -}</span>
+    ) <span class="kw">where</span></code></pre>
+<h1 id="trying-it-out">Trying it out</h1>
+<p>In <code>ghci</code>:</p>
+<pre><code>ghci&gt; param "foo" "bar" &lt;&gt; param "baz" "quux"
+Params [("foo","bar"),("baz","quux")]</code></pre>
+<p>This uses my favourite operator from <code>Data.Monoid</code>:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">(&lt;&gt;) ::</span> <span class="dt">Monoid</span> m <span class="ot">=&gt;</span> m <span class="ot">-&gt;</span> m <span class="ot">-&gt;</span> m
+(<span class="fu">&lt;&gt;</span>) <span class="fu">=</span> mappend</code></pre>
+<p>What do we get if we try this?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">param <span class="st">"foo"</span> <span class="st">"bar"</span> <span class="fu">&lt;&gt;</span> fileString <span class="st">"baz"</span> <span class="dt">Nothing</span> <span class="st">"quux"</span></code></pre>
+<h1 id="last-of-the-monoids">Last of the monoids</h1>
+<p>For which of the following should we write <code>Monoid</code> instances?</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Payload</span> a <span class="fu">=</span> <span class="dt">NoPayload</span>
+               <span class="fu">|</span> <span class="dt">Raw</span> <span class="dt">ContentType</span> <span class="dt">String</span>
+               <span class="fu">|</span> <span class="dt">Params</span> [<span class="dt">Param</span>]
+               <span class="fu">|</span> <span class="dt">FormData</span> [<span class="dt">Part</span>]
+               <span class="kw">deriving</span> (<span class="dt">Show</span>)</code></pre>
+<h1 id="why-care-so-much-about-monoids">Why care so much about monoids?</h1>
+<p>Monoids have many merits:</p>
+<ul>
+<li><p>Simple</p></li>
+<li><p>Easy for clients to use</p></li>
+<li><p>Force you to address API design problems early on</p></li>
+</ul>
+<h1 id="monoids-without-an-identity">Monoids without an identity</h1>
+<p>Like the abstract algebraic approach?</p>
+<p>A package on Hackage named <code>semigroups</code> gives us monoids <em>without</em> an identity operation: semigroups.</p>
+<p>Alas:</p>
+<ul>
+<li><p>The <code>Monoid</code> type was developed before the <code>semigroups</code> package</p></li>
+<li><p>The two should be related, but thanks to this accident of history are not</p></li>
+</ul>
+<h1 id="principles">Principles</h1>
+<p>Why care about phantom types and monoids?</p>
+<ul>
+<li>We want to build the simplest correct libraries we can</li>
+</ul>
+<p>Monoids help us focus on simplicity.</p>
+<p>Phantom types make it easier to build APIs where flat-out broken behaviours can be made impossible by the compiler.</p>
+<h1 id="mutable-variables">Mutable variables</h1>
+<p>We've already seen the very handy <code>MVar</code> type, which represents a "blocking mutable box": we can put a value in or take one out, but we'll block if we put when full or take when empty.</p>
+<p>Even though <code>MVar</code>s are the fastest blocking concurrent structure in the industry (they made the the Kessel Run in less than twelve parsecs!), we don't always want blocking semantics.</p>
+<p>For cases where we want <em>non-</em>blocking updates, there's the <code>IORef</code> type, which gives us mutable references.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.IORef</span>
+
+<span class="ot">newIORef    ::</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">IORef</span> a)
+
+<span class="ot">readIORef   ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> a
+<span class="ot">writeIORef  ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
+
+<span class="ot">modifyIORef ::</span> <span class="dt">IORef</span> a <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> a) <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</code></pre>
+<h1 id="managing-mutation">Managing mutation</h1>
+<p>Application writers are often faced with a question like this:</p>
+<ul>
+<li>I have a big app, and parts of it need their behaviour tweaked by an administrator at runtime.</li>
+</ul>
+<p>There are of course many ways to address this sort of problem.</p>
+<p>Let's consider one where we use a reference to a piece of config data.</p>
+<p>Any code that's executing in the <code>IO</code> monad can, if it knows the name of the config reference, retrieve the current config:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell">curCfg <span class="ot">&lt;-</span> readIORef cfgRef</code></pre>
+<p>The trouble is, ill-behaved code could clearly also <em>modify</em> the current configuration, and leave us with a debugging nightmare.</p>
+<h1 id="phantom-types-to-the-rescue">Phantom types to the rescue!</h1>
+<p>Let's create a new type of mutable reference.</p>
+<p>We use a phantom type <code>t</code> to statically track whether a piece of code is allowed to modify the reference or not.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.IORef</span>
+
+<span class="kw">newtype</span> <span class="dt">Ref</span> t a <span class="fu">=</span> <span class="dt">Ref</span> (<span class="dt">IORef</span> a)</code></pre>
+<p>Remember, our use of <code>newtype</code> here means that the <code>Ref</code> type only exists at compile time: it imposes <em>no</em> runtime cost.</p>
+<p>Since we are using a phantom type, we don't even need values of our access control types:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">ReadOnly</span>
+<span class="kw">data</span> <span class="dt">ReadWrite</span></code></pre>
+<p>We're already in a good spot! Not only are we creating compiler-enforced access control, but it will have <em>zero</em> runtime cost.</p>
+<h1 id="creating-a-mutable-reference">Creating a mutable reference</h1>
+<p>To create a new reference, we just have to ensure that it has the right type.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">newRef ::</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Ref</span> <span class="dt">ReadWrite</span> a)
+newRef a <span class="fu">=</span> <span class="dt">Ref</span> <span class="ot">`fmap`</span> newIORef a</code></pre>
+<h1 id="reading-and-writing-a-mutable-reference">Reading and writing a mutable reference</h1>
+<p>Since we want to be able to read both read-only and read-write references, we don't need to mention the access mode when writing a type signature for <code>readRef</code>.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">readRef ::</span> <span class="dt">Ref</span> t a <span class="ot">-&gt;</span> <span class="dt">IO</span> a
+readRef (<span class="dt">Ref</span> ref) <span class="fu">=</span> readIORef ref</code></pre>
+<p>Of course, code can only write to a reference if the compiler can statically prove (via the type system) that it has write access.</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">writeRef ::</span> <span class="dt">Ref</span> <span class="dt">ReadWrite</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
+writeRef (<span class="dt">Ref</span> ref) v <span class="fu">=</span> writeIORef ref v</code></pre>
+<h1 id="converting-a-reference-to-read-only">Converting a reference to read-only</h1>
+<p>This function allows us to convert any kind of reference into a read-only reference:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">readOnly ::</span> <span class="dt">Ref</span> t a <span class="ot">-&gt;</span> <span class="dt">Ref</span> <span class="dt">ReadOnly</span> a
+readOnly (<span class="dt">Ref</span> ref) <span class="fu">=</span> <span class="dt">Ref</span> ref</code></pre>
+<p>In order to prevent clients from promoting a reference from read-only to read-write, we do <em>not</em> provide a function that goes in the opposite direction.</p>
+<p>We also use the familiar technique of constructor hiding at the top of our source file:</p>
+<pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">module</span> <span class="dt">Ref</span>
+    (
+      <span class="dt">Ref</span>, <span class="co">-- export type ctor, but not value ctor</span>
+      newRef, readOnly,
+      readRef, writeRef
+    ) <span class="kw">where</span></code></pre>
+<h1 id="further-reading">Further reading</h1>
+<p>A <em>really</em> good read:</p>
+<ul>
+<li><a href="http://twdkz.wordpress.com/2013/05/31/data-analysis-with-monoids/">Data analysis with monoids</a></li>
+</ul>
+<p>Monoids for MapReduce:</p>
+<ul>
+<li><a href="http://userpages.uni-koblenz.de/~laemmel/MapReduce/paper.pdf">Google’s MapReduce Programming Model---Revisited</a></li>
+</ul>
+
+
+</body></html>
